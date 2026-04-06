@@ -112,21 +112,19 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
                 <div key={player.deviceId} style={styles.voteRow}>
                   <span style={styles.voteName}>{player.name}</span>
                   <div style={styles.voteTokenWrapper}>
-                    {pending ? (
-                      <span style={styles.votePending}>—</span>
-                    ) : (
-                      <img
-                        src={`/assets/images/tokens/${approved ? 'approve' : 'reject'}.svg`}
-                        style={styles.voteTokenImage}
-                        alt={approved ? 'Approve' : 'Reject'}
-                      />
-                    )}
                     <span style={{
                       ...styles.voteLabel,
                       color: approved ? COLORS.good : rejected ? COLORS.evil : COLORS.textMuted,
                     }}>
                       {pending ? '—' : approved ? 'Approve' : 'Reject'}
                     </span>
+                    {!pending && (
+                      <img
+                        src={`/assets/images/tokens/${approved ? 'approve' : 'reject'}.svg`}
+                        style={styles.voteTokenImage}
+                        alt={approved ? 'Approve' : 'Reject'}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -175,7 +173,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 12, border: `1px solid ${COLORS.goodDim}`,
     display: 'flex', flexDirection: 'column', gap: 6,
   },
-  missionTeamLabel: { fontSize: 9, color: COLORS.good, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
+  missionTeamLabel: { fontSize:  11, color: COLORS.good, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
   missionMemberRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', backgroundColor: 'rgba(13,15,26,0.4)', borderRadius: 8 },
   missionMemberName: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
   missionMemberIcon: { fontSize: 14 },
@@ -184,7 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 12, border: `1px solid ${COLORS.border}`,
     display: 'flex', flexDirection: 'column', gap: 6,
   },
-  voteTableLabel: { fontSize: 9, color: COLORS.textMuted, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
+  voteTableLabel: { fontSize:  11, color: COLORS.textMuted, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
   voteRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '8px 10px', backgroundColor: 'rgba(13,15,26,0.4)', borderRadius: 8,

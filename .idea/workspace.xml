@@ -4,14 +4,25 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.tsx" afterDir="false" />
+    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/CharacterBadge.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/CharacterBadge.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/QuestTracker.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/QuestTracker.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/hooks/useGameState.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/useGameState.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AssassinationScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AssassinationScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/GameBoardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/GameBoardScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/MissionSelectScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MissionSelectScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/RoleRevealScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/RoleRevealScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/StartScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/StartScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/TeamProposeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamProposeScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/TeamVoteResultsScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamVoteResultsScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/TeamVoteScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamVoteScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/firebase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/firebase.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/firebaseGame.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/firebaseGame.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/gameLogic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/gameLogic.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/theme.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/theme.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,6 +35,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Hendu"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Hendu/AvalonQuestCards-PWA.git",
+    "accountId": "d6af98dc-28e8-4f5a-bbbd-562193fb3741"
+  }
+}]]></component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/src/utils/gameLogic.ts" root0="SKIP_INSPECTION" />
   </component>
@@ -57,6 +80,19 @@
       <option name="presentableId" value="Default" />
       <updated>1775394202810</updated>
     </task>
+    <task id="LOCAL-00001" summary="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing">
+      <option name="closed" value="true" />
+      <created>1775495687655</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1775495687655</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
+    <option name="LAST_COMMIT_MESSAGE" value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
   </component>
 </project>

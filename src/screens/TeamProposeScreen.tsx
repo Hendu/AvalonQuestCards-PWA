@@ -224,7 +224,7 @@ const styles: Record<string, React.CSSProperties> = {
   scoreBoxGood: { borderColor: COLORS.goodDim, backgroundColor: 'rgba(13,42,30,0.85)' },
   scoreBoxEvil: { borderColor: COLORS.evilDim, backgroundColor: 'rgba(42,13,13,0.85)' },
   scoreNumber: { fontSize: 32, fontWeight: '800', color: COLORS.textPrimary },
-  scoreLabel: { fontSize: 9, color: COLORS.gold, letterSpacing: '2px' },
+  scoreLabel: { fontSize:  11, color: COLORS.gold, letterSpacing: '2px' },
   scoreVs: { fontSize: 14, color: COLORS.gold },
   proposalCounter: {
     padding: `${SPACING.sm}px ${SPACING.md}px`,
@@ -239,7 +239,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(22,24,38,0.7)', borderRadius: 10,
     border: `1px solid ${COLORS.gold}`,
   },
-  leaderLabel: { fontSize: 9, color: COLORS.gold, letterSpacing: '3px', fontWeight: '700' },
+  leaderLabel: { fontSize:  11, color: COLORS.gold, letterSpacing: '3px', fontWeight: '700' },
   leaderName: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary },
   instructions: { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', margin: 0 },
   playerList: { display: 'flex', flexDirection: 'column', gap: 8 },

@@ -247,7 +247,7 @@ const styles: Record<string, React.CSSProperties> = {
     border:          `1px solid ${COLORS.border}`,
   },
   descriptionLabel: {
-    fontSize:      9,
+    fontSize:  11,
     color:         COLORS.textMuted,
     letterSpacing: '3px',
     fontWeight:    '700',
@@ -269,7 +269,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap:             6,
   },
   visionLabel: {
-    fontSize:      9,
+    fontSize:  11,
     color:         COLORS.textMuted,
     letterSpacing: '3px',
     fontWeight:    '700',

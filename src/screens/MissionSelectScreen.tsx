@@ -271,7 +271,7 @@ const styles: Record<string, React.CSSProperties> = {
     color:      COLORS.textPrimary,
   },
   scoreLabel: {
-    fontSize:      9,
+    fontSize:  11,
     color:         COLORS.gold,
     letterSpacing: '2px',
   },

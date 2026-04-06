@@ -75,7 +75,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
   },
   name: {
-    fontSize:      10,
+    fontSize:  12,
     fontWeight:    '700',
     letterSpacing: '1px',
   },

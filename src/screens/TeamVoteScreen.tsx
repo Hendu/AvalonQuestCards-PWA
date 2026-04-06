@@ -126,12 +126,12 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
                   style={styles.approveButton}
                   onClick={function() { onVote(true); }}
                 >
+                  <span style={styles.approveLabel}>APPROVE</span>
                   <img
                     src="/assets/images/tokens/approve.svg"
                     style={styles.tokenImage}
                     alt="Approve"
                   />
-                  <span style={styles.approveLabel}>APPROVE</span>
                 </button>
 
                 {/* Reject token */}
@@ -139,12 +139,12 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
                   style={styles.rejectButton}
                   onClick={function() { onVote(false); }}
                 >
+                  <span style={styles.rejectLabel}>REJECT</span>
                   <img
                     src="/assets/images/tokens/reject.svg"
                     style={styles.tokenImage}
                     alt="Reject"
                   />
-                  <span style={styles.rejectLabel}>REJECT</span>
                 </button>
               </div>
             </div>
@@ -185,7 +185,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 12, border: `1px solid ${COLORS.border}`,
     display: 'flex', flexDirection: 'column', gap: 6,
   },
-  teamLabel: { fontSize: 9, color: COLORS.gold, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
+  teamLabel: { fontSize:  11, color: COLORS.gold, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
   teamMemberRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', backgroundColor: 'rgba(13,15,26,0.4)', borderRadius: 8 },
   teamMemberName: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
   teamMemberBadge: { fontSize: 14 },

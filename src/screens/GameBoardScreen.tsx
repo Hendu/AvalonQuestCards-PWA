@@ -502,7 +502,7 @@ const styles: Record<string, React.CSSProperties> = {
     color:      COLORS.textPrimary,
   },
   scoreLabel: {
-    fontSize:      9,
+    fontSize:  11,
     color:         COLORS.gold,
     letterSpacing: '2px',
   },
@@ -529,7 +529,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign:       'center',
   },
   missionLabel: {
-    fontSize:      10,
+    fontSize:  12,
     color:         COLORS.textMuted,
     letterSpacing: '3px',
     textTransform: 'uppercase',

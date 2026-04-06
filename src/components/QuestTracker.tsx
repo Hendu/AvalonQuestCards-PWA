@@ -116,7 +116,7 @@ const styles: Record<string, React.CSSProperties> = {
     position:  'absolute',
     bottom:    3,
     right:     5,
-    fontSize:  8,
+    fontSize:  11,
     color:     COLORS.evil,
     fontWeight:'700',
   },

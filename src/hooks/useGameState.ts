@@ -180,6 +180,55 @@ export function useGameState() {
   const stateRef          = useRef(state);
   stateRef.current        = state;
 
+  // ---------------------------------------------------------------------------
+  // WAKE LOCK
+  //
+  // Keeps the screen on during an active game so players don't have to
+  // constantly tap to prevent their phone locking mid-quest.
+  // Requests the lock when the game moves past setup/lobby, releases on reset.
+  // Re-requests when the tab becomes visible again (wake lock auto-releases
+  // when the tab goes to the background).
+  // ---------------------------------------------------------------------------
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  async function requestWakeLock(): Promise<void> {
+    if (!('wakeLock' in navigator)) return;  // not supported -- fail silently
+    try {
+      wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+    } catch (e) {
+      // Permission denied or device doesn't support it -- not a problem
+    }
+  }
+
+  function releaseWakeLock(): void {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release();
+      wakeLockRef.current = null;
+    }
+  }
+
+  // Acquire lock when game is active (past lobby), release when back to setup
+  useEffect(function() {
+    if (state.phase !== 'setup' && state.phase !== 'lobby') {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+  }, [state.phase]);
+
+  // Re-acquire when tab becomes visible (browser releases it on tab switch)
+  useEffect(function() {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && state.phase !== 'setup' && state.phase !== 'lobby') {
+        requestWakeLock();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return function() {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [state.phase]);
+
   // Cleanup listener on unmount
   useEffect(function() {
     return function() {
@@ -533,6 +582,7 @@ export function useGameState() {
   }
 
   function resetGame(): void {
+    releaseWakeLock();
     if (state.gameMode === 'network' && state.isHost && state.roomCode) {
       deleteRoom(state.roomCode);
     }

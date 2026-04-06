@@ -387,8 +387,8 @@ const styles: Record<string, React.CSSProperties> = {
     margin:    0,
   },
   footerText: {
-    fontSize:      11,
-    color:         COLORS.textMuted,
+    fontSize:      13,
+    color:         COLORS.textSecondary,
     letterSpacing: '1px',
     margin:        0,
   },

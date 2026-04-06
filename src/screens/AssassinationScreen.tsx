@@ -189,7 +189,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 12, border: `1px solid ${COLORS.evilDim}`,
     display: 'flex', flexDirection: 'column', gap: 8,
   },
-  revealLabel: { fontSize: 9, color: COLORS.evil, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
+  revealLabel: { fontSize:  11, color: COLORS.evil, letterSpacing: '3px', fontWeight: '700', margin: '0 0 4px 0' },
   evilRevealRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '8px 10px', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 8,
