@@ -23,6 +23,7 @@ import QuestTracker from '../components/QuestTracker';
 import VoteCards    from '../components/VoteCards';
 import VoteResults  from '../components/VoteResults';
 import { COLORS, SPACING } from '../utils/theme';
+import CharacterBadge from '../components/CharacterBadge';
 
 interface GameBoardScreenProps {
   state:                GameState;
@@ -61,7 +62,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
     votes, phase, lastQuestResult, winner, soundEnabled,
     gameMode, isHost, players, missionPlayerIds,
     amIOnMission, haveIVoted, allVotesIn,
-    myDeviceId, myName,
+    myDeviceId, myName, myCharacter, assassinTarget,
   } = state;
 
   const missionSize   = getMissionSize(totalPlayers, currentQuest);
@@ -110,7 +111,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
         {/* ------------------------------------------------------------------ */}
         {/* GAME OVER                                                           */}
         {/* ------------------------------------------------------------------ */}
-        {isGameOver && lastQuestResult !== null && (
+        {isGameOver && (
           <div style={styles.gameOverContainer}>
             <h1 style={{
               ...styles.gameOverTitle,
@@ -120,23 +121,31 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
             </h1>
             <p style={styles.gameOverSubtitle}>
               {winner === 'good'
-                ? 'The forces of Good have completed 3 quests!\nMerlin must now survive...'
-                : 'The forces of Evil have sabotaged 3 quests.\nDarkness reigns.'}
+                ? "Merlin survived the Assassin's blade.\nThe forces of Good prevail!"
+                : assassinTarget !== null
+                  ? "The Assassin found Merlin.\nEvil wins by assassination."
+                  : lastQuestResult === null
+                    ? "Five proposals were rejected.\nEvil wins automatically."
+                    : "The forces of Evil have sabotaged 3 quests.\nDarkness reigns."}
             </p>
-            <VoteResults
-              votes={voteResults}
-              totalSlots={missionSize}
-              isRevealed={true}
-              failCount={lastQuestResult.failCount}
-              successCount={lastQuestResult.successCount}
-            />
+            {lastQuestResult !== null && (
+              <VoteResults
+                votes={voteResults}
+                totalSlots={missionSize}
+                isRevealed={true}
+                failCount={lastQuestResult.failCount}
+                successCount={lastQuestResult.successCount}
+              />
+            )}
             {(gameMode === 'local' || isHost) && (
               <button style={styles.primaryButton} onClick={onResetGame}>
                 START NEW GAME
               </button>
             )}
             {gameMode === 'network' && !isHost && (
-              <p style={styles.guestNote}>Waiting for host to start a new game...</p>
+              <button style={styles.primaryButton} onClick={onResetGame}>
+                LEAVE GAME
+              </button>
             )}
           </div>
         )}
@@ -154,7 +163,12 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 {soundEnabled ? '🔊' : '🔇'}
               </button>
               <span style={styles.topBarTitle}>AVALON QUEST CARDS</span>
-              <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {gameMode === 'network' && myCharacter && (
+                  <CharacterBadge character={myCharacter} />
+                )}
+                <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+              </div>
             </div>
 
             {/* Network info bar */}

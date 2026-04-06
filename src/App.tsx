@@ -1,24 +1,35 @@
 // =============================================================================
 // App.tsx
 //
-// Root component. Routes to the right screen based on game phase.
+// Root component. Routes to the correct screen based on game phase.
 //
-// PHASE → SCREEN:
-//   'setup'          → StartScreen
-//   'lobby'          → LobbyScreen
-//   'mission-select' → MissionSelectScreen
-//   'voting'         → GameBoardScreen
-//   'results'        → GameBoardScreen
-//   'gameover'       → GameBoardScreen
+// PHASE → SCREEN (v3):
+//   'setup'             → StartScreen
+//   'lobby'             → LobbyScreen (now includes character picker)
+//   'role-reveal'       → RoleRevealScreen
+//   'team-propose'      → TeamProposeScreen
+//   'team-vote'         → TeamVoteScreen
+//   'team-vote-results' → TeamVoteResultsScreen
+//   'voting'            → GameBoardScreen (mission success/fail voting)
+//   'results'           → GameBoardScreen
+//   'assassination'     → AssassinationScreen
+//   'gameover'          → GameBoardScreen
+//
+// Local mode bypasses everything above 'setup' and goes straight to 'voting'.
 // =============================================================================
 
 import React from 'react';
 import { useGameState } from './hooks/useGameState';
-import StartScreen        from './screens/StartScreen';
-import LobbyScreen        from './screens/LobbyScreen';
-import MissionSelectScreen from './screens/MissionSelectScreen';
-import GameBoardScreen    from './screens/GameBoardScreen';
-import { VoteResult } from './utils/gameLogic';
+import StartScreen           from './screens/StartScreen';
+import LobbyScreen           from './screens/LobbyScreen';
+import RoleRevealScreen      from './screens/RoleRevealScreen';
+import TeamProposeScreen     from './screens/TeamProposeScreen';
+import TeamVoteScreen        from './screens/TeamVoteScreen';
+import TeamVoteResultsScreen from './screens/TeamVoteResultsScreen';
+import GameBoardScreen       from './screens/GameBoardScreen';
+import AssassinationScreen   from './screens/AssassinationScreen';
+import { VoteResult }        from './utils/gameLogic';
+import { evaluateProposalVotes } from './utils/gameLogic';
 
 export default function App() {
   const {
@@ -28,12 +39,16 @@ export default function App() {
     advanceLocalQuest,
     resetLocalVotes,
     hostNetworkGame,
+    hostUpdateCharacters,
     hostStartGame,
-    sendOnMission,
-    hostRevealResults,
+    hostSubmitTeamProposal,
+    hostAdvanceToMissionVoting,
     advanceNetworkQuest,
     joinNetworkGame,
+    playerConfirmRoleReveal,
+    castTeamProposalVote,
     castNetworkVote,
+    submitAssassination,
     toggleSound,
     resetGame,
   } = useGameState();
@@ -41,7 +56,7 @@ export default function App() {
   const { phase, gameMode, isHost } = state;
 
   // ---------------------------------------------------------------------------
-  // Route to setup screen
+  // Setup screen
   // ---------------------------------------------------------------------------
   if (phase === 'setup') {
     return (
@@ -57,7 +72,7 @@ export default function App() {
   }
 
   // ---------------------------------------------------------------------------
-  // Route to lobby
+  // Lobby (includes character picker for host)
   // ---------------------------------------------------------------------------
   if (phase === 'lobby') {
     return (
@@ -67,6 +82,8 @@ export default function App() {
         players={state.players}
         totalPlayers={state.totalPlayers}
         myDeviceId={state.myDeviceId}
+        availableCharacters={state.availableCharacters}
+        onUpdateCharacters={hostUpdateCharacters}
         onStartGame={hostStartGame}
         onLeave={resetGame}
       />
@@ -74,12 +91,44 @@ export default function App() {
   }
 
   // ---------------------------------------------------------------------------
-  // Route to mission selection
+  // Role reveal -- each player sees their character privately
   // ---------------------------------------------------------------------------
-  if (phase === 'mission-select') {
+  if (phase === 'role-reveal') {
+    // If we somehow don't have a character yet (race condition on initial load),
+    // show a brief loading state rather than crashing.
+    if (!state.myCharacter) {
+      return (
+        <div style={loadingStyle}>
+          <p style={{ color: '#c9a96e' }}>Loading your character...</p>
+        </div>
+      );
+    }
     return (
-      <MissionSelectScreen
-        isHost={isHost}
+      <RoleRevealScreen
+        myCharacter={state.myCharacter}
+        myDeviceId={state.myDeviceId}
+        players={state.players}
+        characters={state.characters}
+        confirmedRoleReveal={state.confirmedRoleReveal}
+        totalPlayers={state.totalPlayers}
+        onConfirm={playerConfirmRoleReveal}
+      />
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Team proposal -- leader picks the mission team
+  // ---------------------------------------------------------------------------
+  if (phase === 'team-propose') {
+    const sortedPlayers  = [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; });
+    const safeLeaderIdx  = state.leaderIndex % Math.max(sortedPlayers.length, 1);
+    const leaderPlayer   = sortedPlayers[safeLeaderIdx];
+    const leaderName     = leaderPlayer ? leaderPlayer.name : 'Unknown';
+
+    return (
+      <TeamProposeScreen
+        isLeader={state.amILeader}
+        leaderName={leaderName}
         players={state.players}
         currentQuest={state.currentQuest}
         totalPlayers={state.totalPlayers}
@@ -87,32 +136,92 @@ export default function App() {
         evilWins={state.evilWins}
         questOutcomes={state.questOutcomes}
         myName={state.myName}
-        onSendOnMission={sendOnMission}
+        myCharacter={state.myCharacter}
+        proposalCount={state.proposalCount}
+        onSubmitProposal={hostSubmitTeamProposal}
         onResetGame={resetGame}
       />
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Route to game board (voting, results, gameover)
+  // Team vote -- everyone votes approve/reject simultaneously
   // ---------------------------------------------------------------------------
+  if (phase === 'team-vote') {
+    const sortedPlayers = [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; });
+    const safeLeaderIdx = state.leaderIndex % Math.max(sortedPlayers.length, 1);
+    const leaderPlayer  = sortedPlayers[safeLeaderIdx];
+    const leaderName    = leaderPlayer ? leaderPlayer.name : 'Unknown';
 
-  // onVote routes to local or network vote function
-  function handleVote(result: VoteResult) {
-    if (gameMode === 'local') {
-      castLocalVote(result);
-    } else {
-      castNetworkVote(result);
-    }
+    return (
+      <TeamVoteScreen
+        players={state.players}
+        missionPlayerIds={state.missionPlayerIds}
+        proposalVotes={state.proposalVotes}
+        myDeviceId={state.myDeviceId}
+        myCharacter={state.myCharacter}
+        myName={state.myName}
+        leaderName={leaderName}
+        currentQuest={state.currentQuest}
+        proposalCount={state.proposalCount}
+        totalPlayers={state.totalPlayers}
+        haveICastProposalVote={state.haveICastProposalVote}
+        onVote={castTeamProposalVote}
+        onResetGame={resetGame}
+      />
+    );
   }
 
-  // onAdvanceToNextQuest routes to local or network advance function
+  // ---------------------------------------------------------------------------
+  // Team vote results -- reveal who voted what
+  // ---------------------------------------------------------------------------
+  if (phase === 'team-vote-results') {
+    const result = evaluateProposalVotes(state.proposalVotes);
+
+    return (
+      <TeamVoteResultsScreen
+        players={state.players}
+        proposalVotes={state.proposalVotes}
+        missionPlayerIds={state.missionPlayerIds}
+        myCharacter={state.myCharacter}
+        isHost={isHost}
+        approveCount={result.approveCount}
+        rejectCount={result.rejectCount}
+        onContinue={hostAdvanceToMissionVoting}
+        onResetGame={resetGame}
+      />
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Assassination phase
+  // ---------------------------------------------------------------------------
+  if (phase === 'assassination') {
+    return (
+      <AssassinationScreen
+        players={state.players}
+        characters={state.characters}
+        myDeviceId={state.myDeviceId}
+        myCharacter={state.myCharacter}
+        amIAssassin={state.amIAssassin}
+        onSubmitTarget={submitAssassination}
+        onResetGame={resetGame}
+      />
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Game board: voting, results, gameover
+  // ---------------------------------------------------------------------------
+
+  function handleVote(result: VoteResult) {
+    if (gameMode === 'local') castLocalVote(result);
+    else castNetworkVote(result);
+  }
+
   function handleAdvance() {
-    if (gameMode === 'local') {
-      advanceLocalQuest();
-    } else {
-      advanceNetworkQuest();
-    }
+    if (gameMode === 'local') advanceLocalQuest();
+    else advanceNetworkQuest();
   }
 
   return (
@@ -123,7 +232,17 @@ export default function App() {
       onResetVotes={resetLocalVotes}
       onResetGame={resetGame}
       onToggleSound={toggleSound}
-      onRevealResults={hostRevealResults}
+      onRevealResults={function() {}}  // auto-reveal handles this in v3
     />
   );
 }
+
+// Simple loading screen style (used for race-condition guard above)
+const loadingStyle: React.CSSProperties = {
+  width:           '100%',
+  height:          '100%',
+  display:         'flex',
+  alignItems:      'center',
+  justifyContent:  'center',
+  backgroundColor: '#0d0f1a',
+};

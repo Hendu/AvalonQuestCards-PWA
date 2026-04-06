@@ -1,12 +1,5 @@
-// =============================================================================
-// firebase.ts
-//
-// Firebase initialization and shared Firestore instance.
-// =============================================================================
-
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-
 
 const firebaseConfig = {
   apiKey:            'REDACTED',
@@ -17,7 +10,6 @@ const firebaseConfig = {
   appId:             '1:800039701909:web:REDACTED',
   measurementId:     'REDACTED',
 };
-
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
