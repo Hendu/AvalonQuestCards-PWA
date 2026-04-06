@@ -4,26 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/CharacterBadge.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/CharacterBadge.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/QuestTracker.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/QuestTracker.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/hooks/useGameState.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/useGameState.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/AssassinationScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AssassinationScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/GameBoardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/GameBoardScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/MissionSelectScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MissionSelectScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/RoleRevealScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/RoleRevealScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/StartScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/StartScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/TeamProposeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamProposeScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/TeamVoteResultsScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamVoteResultsScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/TeamVoteScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamVoteScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/firebase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/firebase.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/firebaseGame.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/firebaseGame.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/gameLogic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/gameLogic.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/theme.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/theme.ts" afterDir="false" />
-    </list>
+    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -88,11 +69,20 @@
       <option name="project" value="LOCAL" />
       <updated>1775495687655</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks.">
+      <option name="closed" value="true" />
+      <created>1775501711973</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1775501711973</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
-    <option name="LAST_COMMIT_MESSAGE" value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
+    <MESSAGE value="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
+    <option name="LAST_COMMIT_MESSAGE" value="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
   </component>
 </project>

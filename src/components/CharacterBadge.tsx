@@ -40,43 +40,34 @@ const CHARACTER_SHORT: Record<CharacterName, string> = {
 };
 
 export default function CharacterBadge({ character }: CharacterBadgeProps) {
-  const info       = CHARACTERS[character];
-  const isEvil     = info.alignment === 'evil';
-  const emoji      = CHARACTER_EMOJI[character];
-  const shortName  = CHARACTER_SHORT[character];
+  const emoji     = CHARACTER_EMOJI[character];
+  const shortName = CHARACTER_SHORT[character];
 
   return (
-    <div style={{
-      ...styles.badge,
-      backgroundColor: isEvil ? 'rgba(42,13,13,0.9)' : 'rgba(13,42,30,0.9)',
-      borderColor:     isEvil ? COLORS.evilDim : COLORS.goodDim,
-    }}>
+    <div style={styles.badge}>
       <span style={styles.emoji}>{emoji}</span>
-      <span style={{
-        ...styles.name,
-        color: isEvil ? COLORS.evil : COLORS.good,
-      }}>
-        {shortName}
-      </span>
+      <span style={styles.name}>{shortName}</span>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
   badge: {
-    display:       'flex',
-    alignItems:    'center',
-    gap:           4,
-    padding:       '3px 8px',
-    borderRadius:  20,
-    border:        '1px solid',
+    display:         'flex',
+    alignItems:      'center',
+    gap:             4,
+    padding:         '3px 8px',
+    borderRadius:    20,
+    border:          `1px solid ${COLORS.border}`,
+    backgroundColor: 'rgba(22,24,38,0.9)',
   },
   emoji: {
     fontSize: 12,
   },
   name: {
-    fontSize:  12,
+    fontSize:      12,
     fontWeight:    '700',
     letterSpacing: '1px',
+    color:         COLORS.textSecondary,
   },
 };
