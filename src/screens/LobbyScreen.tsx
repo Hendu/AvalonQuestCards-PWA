@@ -131,12 +131,14 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           }}
           onClick={function(e) { e.stopPropagation(); }}
         >
-          {/* Card image -- fills most of the modal */}
-          <img
-            src={`/assets/images/characters/${imageName}.svg`}
-            style={styles.modalImage}
-            alt={zoomedCard}
-          />
+          {/* Card image in a mat-board frame */}
+          <div style={{ ...styles.modalFrame, borderColor: isEvil ? COLORS.evilDim : COLORS.goodDim }}>
+            <img
+              src={`/assets/images/characters/${imageName}.png`}
+              style={styles.modalImage}
+              alt={zoomedCard}
+            />
+          </div>
 
           {/* Description */}
           <p style={styles.modalDescription}>{info.description}</p>
@@ -255,8 +257,10 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                     style={{ ...styles.charCard, ...styles.charCardLocked }}
                     onClick={function() { setZoomedCard(name); }}
                   >
-                    <img src={`/assets/images/characters/${name.replace(/ /g, '_')}.svg`}
-                         style={styles.charCardImage} alt={name} />
+                    <div style={{ ...styles.charCardFrame, borderColor: info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim }}>
+                      <img src={`/assets/images/characters/${name.replace(/ /g, '_')}.png`}
+                           style={styles.charCardImage} alt={name} />
+                    </div>
                     <span style={styles.charCardName}>{name}</span>
                     <span style={{
                       ...styles.charCardAlignment,
@@ -291,9 +295,10 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                     }}
                     onClick={function() { setZoomedCard(name); }}
                   >
-                    <img src={`/assets/images/characters/${name.replace(/ /g, '_')}.svg`}
-                         style={{ ...styles.charCardImage, ...(dimmed ? { opacity: 0.5 } : {}) }}
-                         alt={name} />
+                    <div style={{ ...styles.charCardFrame, ...(dimmed ? { opacity: 0.5 } : {}), borderColor: info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim }}>
+                      <img src={`/assets/images/characters/${name.replace(/ /g, '_')}.png`}
+                           style={styles.charCardImage} alt={name} />
+                    </div>
                     <span style={styles.charCardName}>{name}</span>
                     <span style={{
                       ...styles.charCardAlignment,
@@ -326,8 +331,10 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                       style={styles.fillerInfoBtn}
                       onClick={function() { setZoomedCard(name); }}
                     >
-                      <img src={`/assets/images/characters/${name.replace(/ /g, '_')}.svg`}
-                           style={styles.fillerImage} alt={name} />
+                      <div style={{ ...styles.fillerFrame, borderColor: info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim }}>
+                        <img src={`/assets/images/characters/${name.replace(/ /g, '_')}.png`}
+                             style={styles.fillerImage} alt={name} />
+                      </div>
                       <div style={styles.fillerInfo}>
                         <span style={styles.fillerName}>{name}</span>
                         <span style={{
@@ -423,7 +430,8 @@ const styles: Record<string, React.CSSProperties> = {
   charCardLocked:   { borderColor: 'rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.6)' },
   charCardSelected: { borderColor: COLORS.gold, backgroundColor: 'rgba(30,33,54,0.95)' },
   charCardDimmed:   { opacity: 0.45 },
-  charCardImage:    { width: 60, height: 80, objectFit: 'contain', borderRadius: 6 },
+  charCardFrame:    { width: 60, height: 80, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1px solid' },
+  charCardImage:    { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' },
   charCardName:     { fontSize: 12, color: COLORS.textPrimary, textAlign: 'center', fontWeight: '600', lineHeight: '1.2' },
   charCardAlignment:{ fontSize: 11, letterSpacing: '1px', fontWeight: '700' },
   lockedBadge:      { fontSize: 11, color: COLORS.textMuted, letterSpacing: '1px', backgroundColor: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: 4 },
@@ -431,7 +439,8 @@ const styles: Record<string, React.CSSProperties> = {
   fillerList:       { display: 'flex', flexDirection: 'column', gap: 8 },
   fillerRow:        { display: 'flex', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.sm}px ${SPACING.md}px`, backgroundColor: 'rgba(22,24,38,0.85)', borderRadius: 12, border: `1px solid ${COLORS.border}` },
   fillerInfoBtn:    { display: 'flex', alignItems: 'center', gap: SPACING.sm, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0 },
-  fillerImage:      { width: 40, height: 54, objectFit: 'contain', borderRadius: 4, flexShrink: 0 },
+  fillerFrame:      { width: 40, height: 54, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid' },
+  fillerImage:      { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' },
   fillerInfo:       { display: 'flex', flexDirection: 'column', gap: 2 },
   fillerName:       { fontSize: 13, fontWeight: '600', color: COLORS.textPrimary },
   fillerAlignment:  { fontSize: 11, letterSpacing: '1px', fontWeight: '700' },
@@ -446,7 +455,8 @@ const styles: Record<string, React.CSSProperties> = {
   // Modal
   modalOverlay:     { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACING.md },
   modalCard:        { width: '100%', maxWidth: 340, borderRadius: 20, border: '1px solid', padding: SPACING.lg, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACING.md },
-  modalImage:       { width: 220, height: 308, objectFit: 'contain', borderRadius: 12 },
+  modalFrame:       { width: 220, height: 370, borderRadius: 16, overflow: 'hidden', flexShrink: 0, border: '1px solid' },
+  modalImage:       { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' },
   modalDescription: { fontSize: 14, color: COLORS.textPrimary, textAlign: 'center', lineHeight: '1.6', margin: 0 },
   modalButtons:     { display: 'flex', gap: SPACING.sm, width: '100%' },
   modalBtn:         { flex: 1, padding: `${SPACING.sm}px`, borderRadius: 12, fontSize: 13, fontWeight: '800', letterSpacing: '2px', cursor: 'pointer', border: 'none' },

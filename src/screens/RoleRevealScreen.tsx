@@ -63,11 +63,14 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
               ? 'rgba(13,42,30,0.88)'
               : 'rgba(42,13,13,0.88)',
           }}>
-            <img
-              src={`/assets/images/characters/${imageName}.svg`}
-              style={styles.cardImage}
-              alt={myCharacter}
-            />
+            {/* Cropping frame -- uniform rounded rect regardless of source image dimensions */}
+            <div style={styles.cardFrame}>
+              <img
+                src={`/assets/images/characters/${imageName}.png`}
+                style={styles.cardImage}
+                alt={myCharacter}
+              />
+            </div>
           </div>
 
           {/* Role description */}
@@ -151,13 +154,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     padding: SPACING.lg, borderRadius: 20, border: '1px solid',
   },
-  cardImage: {
-    width:        '100%',
-    maxWidth:     300,
-    height:       'auto',
-    aspectRatio:  '5 / 7',
-    objectFit:    'contain',
+  cardFrame: {
+    width:        280,
+    height:       392,
     borderRadius: 16,
+    overflow:     'hidden',
+    flexShrink:   0,
+    border:       '1px solid blue',
+  },
+  cardImage: {
+    width:          '100%',
+    height:         '100%',
+    objectFit:      'cover',
+    objectPosition: 'center top',
+    display:        'block',
   },
   descriptionBox: {
     padding: SPACING.md, backgroundColor: 'rgba(22,24,38,0.85)',
