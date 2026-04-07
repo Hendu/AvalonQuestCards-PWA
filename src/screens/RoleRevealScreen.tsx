@@ -64,7 +64,7 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
               : 'rgba(42,13,13,0.88)',
           }}>
             {/* Cropping frame -- uniform rounded rect regardless of source image dimensions */}
-            <div style={styles.cardFrame}>
+            <div style={{ ...styles.cardFrame, borderColor: info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim }}>
               <img
                 src={`/assets/images/characters/${imageName}.png`}
                 style={styles.cardImage}
@@ -156,11 +156,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardFrame: {
     width:        280,
-    height:       392,
+    height:       420,
     borderRadius: 16,
     overflow:     'hidden',
     flexShrink:   0,
-    border:       '1px solid blue',
+    border:       '1px solid',
   },
   cardImage: {
     width:          '100%',
