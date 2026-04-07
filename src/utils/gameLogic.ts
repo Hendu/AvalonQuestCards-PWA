@@ -105,7 +105,7 @@ export const CHARACTERS: Record<CharacterName, CharacterInfo> = {
     name:        'Morgana',
     alignment:   'evil',
     isOptional:  true,
-    description: 'You appear as Merlin to Percival. Sow confusion and protect your Assassin ally.',
+    description: 'You appear as Merlin to Percival. Sow confusion and keep the good team guessing.',
     flavor:      'The enchantress who mimics the light to hide her darkness.',
   },
   'Mordred': {
@@ -126,7 +126,7 @@ export const CHARACTERS: Record<CharacterName, CharacterInfo> = {
     name:        'Minion of Mordred',
     alignment:   'evil',
     isOptional:  true,
-    description: 'You know your fellow evil players. Sabotage quests and protect the Assassin.',
+    description: 'You know your fellow evil players. Sabotage quests and help evil win.',
     flavor:      'A servant of evil hiding among the good.',
   },
 };

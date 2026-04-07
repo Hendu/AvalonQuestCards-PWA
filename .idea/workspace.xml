@@ -4,8 +4,11 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="v3.3 removed character badge emoji, increased card size on role reveal">
+    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="Removed Morgana dependency to select Percival">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/assets/images/characters/Minion_of_Mordred.svg" beforeDir="false" afterPath="$PROJECT_DIR$/public/assets/images/characters/Minion_of_Mordred.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/StartScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/StartScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/gameLogic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/gameLogic.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -88,13 +91,22 @@
       <option name="project" value="LOCAL" />
       <updated>1775525674251</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Removed Morgana dependency to select Percival">
+      <option name="closed" value="true" />
+      <created>1775526217354</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1775526217354</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
     <MESSAGE value="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
     <MESSAGE value="v3.3 removed character badge emoji, increased card size on role reveal" />
-    <option name="LAST_COMMIT_MESSAGE" value="v3.3 removed character badge emoji, increased card size on role reveal" />
+    <MESSAGE value="Removed Morgana dependency to select Percival" />
+    <option name="LAST_COMMIT_MESSAGE" value="Removed Morgana dependency to select Percival" />
   </component>
 </project>
