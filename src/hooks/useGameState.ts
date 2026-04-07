@@ -477,9 +477,9 @@ export function useGameState() {
     if (!state.roomCode) return;
 
     // Sort players by joinedAt to get deterministic assignment order
-    const sorted    = getSortedPlayers(state.players);
-    const deviceIds = sorted.map(function(p) { return p.deviceId; });
-    const fullList  = getFullCharacterList(state.availableCharacters);
+    const sorted     = getSortedPlayers(state.players);
+    const deviceIds  = sorted.map(function(p) { return p.deviceId; });
+    const fullList   = getFullCharacterList(state.availableCharacters);
     const assignment = assignCharacters(deviceIds, fullList);
 
     await startGame(state.roomCode, assignment, state.availableCharacters);

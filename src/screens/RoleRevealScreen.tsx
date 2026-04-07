@@ -1,20 +1,9 @@
 // =============================================================================
 // RoleRevealScreen.tsx
 //
-// Shown after the host starts the game. Each player privately sees their
-// character card on their own device. They tap "I understand my role" to
-// confirm. The game doesn't advance until everyone has confirmed.
-//
-// What's shown:
-//   - The character card image (SVG placeholder, real scan later)
-//   - Character name and alignment
-//   - Description of what they know / their ability
-//   - Who they can see (Merlin sees evil, Percival sees Merlin+Morgana, etc.)
-//   - A "I understand my role" button
-//   - After confirming: a waiting indicator showing how many have confirmed
-//
-// The character badge (small persistent indicator of your character) is
-// intentionally NOT shown here since this IS the reveal screen.
+// Each player privately sees their character card on their own device.
+// Stripped down -- the card is the star, redundant text removed.
+// Below the card: role description and who you can see. That's it.
 // =============================================================================
 
 import React from 'react';
@@ -37,7 +26,6 @@ interface RoleRevealScreenProps {
   onConfirm:           () => void;
 }
 
-// Helper: find a player's name by deviceId
 function getPlayerName(players: Player[], deviceId: string): string {
   const p = players.find(function(pl) { return pl.deviceId === deviceId; });
   return p ? p.name : 'Unknown';
@@ -49,13 +37,10 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
     confirmedRoleReveal, totalPlayers, onConfirm,
   } = props;
 
-  const info        = CHARACTERS[myCharacter];
-  const hasConfirmed = confirmedRoleReveal.includes(myDeviceId);
+  const info           = CHARACTERS[myCharacter];
+  const hasConfirmed   = confirmedRoleReveal.includes(myDeviceId);
   const confirmedCount = confirmedRoleReveal.length;
-
-  // What other players can I see?
   const vision: CharacterVisionEntry[] = getCharacterVision(myCharacter, myDeviceId, characters);
-
   const imageName = myCharacter.replace(/ /g, '_');
 
   return (
@@ -70,10 +55,10 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
 
         <div style={styles.scrollArea}>
 
-          {/* Character card */}
+          {/* Card -- large, centered, the whole point of this screen */}
           <div style={{
             ...styles.cardWrapper,
-            borderColor: info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim,
+            borderColor:     info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim,
             backgroundColor: info.alignment === 'good'
               ? 'rgba(13,42,30,0.88)'
               : 'rgba(42,13,13,0.88)',
@@ -83,28 +68,15 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
               style={styles.cardImage}
               alt={myCharacter}
             />
-            <h2 style={{
-              ...styles.characterName,
-              color: info.alignment === 'good' ? COLORS.good : COLORS.evil,
-            }}>
-              {myCharacter.toUpperCase()}
-            </h2>
-            <p style={{
-              ...styles.alignmentBadge,
-              color: info.alignment === 'good' ? COLORS.good : COLORS.evil,
-            }}>
-              {info.alignment === 'good' ? '⚔️ Forces of Good' : '💀 Forces of Evil'}
-            </p>
-            <p style={styles.flavor}>{info.flavor}</p>
           </div>
 
-          {/* Ability description */}
+          {/* Role description */}
           <div style={styles.descriptionBox}>
             <p style={styles.descriptionLabel}>YOUR ROLE</p>
             <p style={styles.description}>{info.description}</p>
           </div>
 
-          {/* Vision: who you can see */}
+          {/* Who you can see */}
           {vision.length > 0 && (
             <div style={styles.visionBox}>
               <p style={styles.visionLabel}>YOU CAN SEE</p>
@@ -128,7 +100,7 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
             </div>
           )}
 
-          {/* Confirm button / waiting state */}
+          {/* Confirm / waiting */}
           {!hasConfirmed ? (
             <button style={styles.confirmButton} onClick={onConfirm}>
               I UNDERSTAND MY ROLE →
@@ -157,198 +129,74 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
 
 const styles: Record<string, React.CSSProperties> = {
   screen: {
-    width:              '100%',
-    height:             '100%',
-    backgroundSize:     'cover',
-    backgroundPosition: 'center',
-    position:           'relative',
+    width: '100%', height: '100%',
+    backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative',
   },
-  overlay: {
-    position:        'absolute',
-    inset:           0,
-    backgroundColor: 'rgba(0,0,0,0.78)',
-  },
-  content: {
-    position:      'relative',
-    zIndex:        1,
-    width:         '100%',
-    height:        '100%',
-    display:       'flex',
-    flexDirection: 'column',
-  },
+  overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.78)' },
+  content: { position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' },
   header: {
-    padding:         `${SPACING.md}px ${SPACING.md}px ${SPACING.sm}px`,
-    borderBottom:    '1px solid rgba(42,45,69,0.8)',
+    padding: `${SPACING.md}px ${SPACING.md}px ${SPACING.sm}px`,
+    borderBottom: '1px solid rgba(42,45,69,0.8)',
     backgroundColor: 'rgba(13,15,26,0.7)',
-    flexShrink:      0,
-    textAlign:       'center',
+    flexShrink: 0, textAlign: 'center',
   },
-  headerLabel: {
-    fontSize:      11,
-    color:         COLORS.gold,
-    letterSpacing: '3px',
-    fontWeight:    '700',
-    margin:        0,
-  },
-  headerHint: {
-    fontSize:  11,
-    color:     COLORS.textMuted,
-    margin:    '2px 0 0 0',
-    fontStyle: 'italic',
-  },
+  headerLabel: { fontSize: 13, color: COLORS.gold, letterSpacing: '3px', fontWeight: '700', margin: 0 },
+  headerHint:  { fontSize: 12, color: COLORS.textSecondary, margin: '2px 0 0 0', fontStyle: 'italic' },
   scrollArea: {
-    flex:          1,
-    overflowY:     'auto',
-    padding:       SPACING.md,
-    display:       'flex',
-    flexDirection: 'column',
-    gap:           SPACING.lg,
-    paddingBottom: SPACING.xxl,
+    flex: 1, overflowY: 'auto', padding: SPACING.md,
+    display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl,
   },
+  // Card fills much more of the screen now -- no text below it to compete
   cardWrapper: {
-    display:        'flex',
-    flexDirection:  'column',
-    alignItems:     'center',
-    gap:            SPACING.sm,
-    padding:        SPACING.lg,
-    borderRadius:   20,
-    border:         '1px solid',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    padding: SPACING.lg, borderRadius: 20, border: '1px solid',
   },
   cardImage: {
-    width:        140,
-    height:       200,
+    width:        '100%',
+    maxWidth:     300,
+    height:       'auto',
+    aspectRatio:  '5 / 7',
     objectFit:    'contain',
-    borderRadius: 12,
-  },
-  characterName: {
-    fontSize:      28,
-    fontWeight:    '800',
-    letterSpacing: '4px',
-    margin:        0,
-    textAlign:     'center',
-  },
-  alignmentBadge: {
-    fontSize:      13,
-    fontWeight:    '600',
-    margin:        0,
-  },
-  flavor: {
-    fontSize:   13,
-    color:      COLORS.textMuted,
-    textAlign:  'center',
-    fontStyle:  'italic',
-    lineHeight: '1.5',
-    margin:     0,
+    borderRadius: 16,
   },
   descriptionBox: {
-    padding:         SPACING.md,
-    backgroundColor: 'rgba(22,24,38,0.85)',
-    borderRadius:    12,
-    border:          `1px solid ${COLORS.border}`,
+    padding: SPACING.md, backgroundColor: 'rgba(22,24,38,0.85)',
+    borderRadius: 12, border: `1px solid ${COLORS.border}`,
   },
-  descriptionLabel: {
-    fontSize:  11,
-    color:         COLORS.textMuted,
-    letterSpacing: '3px',
-    fontWeight:    '700',
-    margin:        '0 0 6px 0',
-  },
-  description: {
-    fontSize:   14,
-    color:      COLORS.textPrimary,
-    lineHeight: '1.6',
-    margin:     0,
-  },
+  descriptionLabel: { fontSize: 11, color: COLORS.textSecondary, letterSpacing: '3px', fontWeight: '700', margin: '0 0 6px 0' },
+  description:      { fontSize: 15, color: COLORS.textPrimary, lineHeight: '1.6', margin: 0 },
   visionBox: {
-    padding:         SPACING.md,
-    backgroundColor: 'rgba(22,24,38,0.85)',
-    borderRadius:    12,
-    border:          `1px solid ${COLORS.border}`,
-    display:         'flex',
-    flexDirection:   'column',
-    gap:             6,
+    padding: SPACING.md, backgroundColor: 'rgba(22,24,38,0.85)',
+    borderRadius: 12, border: `1px solid ${COLORS.border}`,
+    display: 'flex', flexDirection: 'column', gap: 6,
   },
-  visionLabel: {
-    fontSize:  11,
-    color:         COLORS.textMuted,
-    letterSpacing: '3px',
-    fontWeight:    '700',
-    margin:        0,
-  },
+  visionLabel:  { fontSize: 11, color: COLORS.textSecondary, letterSpacing: '3px', fontWeight: '700', margin: 0 },
   visionRow: {
-    display:        'flex',
-    justifyContent: 'space-between',
-    alignItems:     'center',
-    padding:        `6px ${SPACING.sm}px`,
-    backgroundColor: 'rgba(13,15,26,0.5)',
-    borderRadius:   8,
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: `6px ${SPACING.sm}px`, backgroundColor: 'rgba(13,15,26,0.5)', borderRadius: 8,
   },
-  visionName: {
-    fontSize:   15,
-    fontWeight: '600',
-    color:      COLORS.textPrimary,
-  },
-  visionLabel2: {
-    fontSize:   12,
-    color:      COLORS.evil,
-    fontStyle:  'italic',
-  },
-  visionNobody: {
-    fontSize:  14,
-    color:     COLORS.textMuted,
-    fontStyle: 'italic',
-    margin:    0,
-  },
+  visionName:   { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
+  visionLabel2: { fontSize: 13, color: COLORS.textSecondary, fontStyle: 'italic' },
+  visionNobody: { fontSize: 14, color: COLORS.textSecondary, fontStyle: 'italic', margin: 0 },
   confirmButton: {
-    width:           '100%',
-    padding:         `${SPACING.md}px`,
-    backgroundColor: COLORS.gold,
-    border:          'none',
-    borderRadius:    20,
-    fontSize:        14,
-    fontWeight:      '800',
-    color:           COLORS.bgDark,
-    letterSpacing:   '2px',
-    cursor:          'pointer',
+    width: '100%', padding: `${SPACING.md}px`, backgroundColor: COLORS.gold,
+    border: 'none', borderRadius: 20, fontSize: 15, fontWeight: '800',
+    color: COLORS.bgDark, letterSpacing: '2px', cursor: 'pointer',
   },
   waitingBox: {
-    display:        'flex',
-    flexDirection:  'column',
-    alignItems:     'center',
-    gap:            SPACING.sm,
-    padding:        SPACING.lg,
-    backgroundColor: 'rgba(22,24,38,0.85)',
-    borderRadius:   12,
-    border:         `1px solid ${COLORS.border}`,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACING.sm,
+    padding: SPACING.lg, backgroundColor: 'rgba(22,24,38,0.85)',
+    borderRadius: 12, border: `1px solid ${COLORS.border}`,
   },
-  waitingText: {
-    fontSize:   16,
-    fontWeight: '700',
-    color:      COLORS.good,
-    margin:     0,
-  },
-  waitingProgress: {
-    fontSize: 13,
-    color:    COLORS.textSecondary,
-    margin:   0,
-  },
+  waitingText:     { fontSize: 16, fontWeight: '700', color: COLORS.good, margin: 0 },
+  waitingProgress: { fontSize: 13, color: COLORS.textSecondary, margin: 0 },
   progressBar: {
-    width:           '100%',
-    height:          6,
-    backgroundColor: 'rgba(42,45,69,0.6)',
-    borderRadius:    3,
-    overflow:        'hidden',
+    width: '100%', height: 6, backgroundColor: 'rgba(42,45,69,0.6)',
+    borderRadius: 3, overflow: 'hidden',
   },
   progressFill: {
-    height:          '100%',
-    backgroundColor: COLORS.good,
-    borderRadius:    3,
-    transition:      'width 0.4s ease',
+    height: '100%', backgroundColor: COLORS.good,
+    borderRadius: 3, transition: 'width 0.4s ease',
   },
-  waitingHint: {
-    fontSize:  12,
-    color:     COLORS.textMuted,
-    textAlign: 'center',
-    margin:    0,
-  },
+  waitingHint: { fontSize: 12, color: COLORS.textSecondary, textAlign: 'center', margin: 0 },
 };

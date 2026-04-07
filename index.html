@@ -1,86 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <link rel="icon" href="/assets/images/icon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <meta name="theme-color" content="#0D0F1A" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Avalon" />
-  <link rel="apple-touch-icon" href="/assets/images/icon.png" />
-  <link rel="manifest" href="/manifest.json" />
-  <title>Avalon Quest Cards</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/assets/images/icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#0D0F1A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Avalon" />
+    <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Avalon Quest Cards</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
 
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #0D0F1A;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      user-select: none;
-      -webkit-user-select: none;
-    }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #0D0F1A;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
 
-    /*
-      On a real phone, #root fills the whole screen.
-      On a desktop browser, it's capped at 430px wide (iPhone Pro Max width)
-      and centered with a subtle shadow so it looks like a phone on your desk.
-    */
-    #root {
-      width: 100%;
-      max-width: 430px;
-      height: 100%;
-      margin: 0 auto;
-      position: relative;
-      overflow: hidden;
+      /*
+        On a real phone, #root fills the whole screen.
+        On a desktop browser, it's capped at 430px wide (iPhone Pro Max width)
+        and centered with a subtle shadow so it looks like a phone on your desk.
+      */
+      #root {
+        width: 100%;
+        max-width: 430px;
+        height: 100%;
+        margin: 0 auto;
+        position: relative;
+        overflow: hidden;
 
-      /* Only show the phone-frame shadow on wider screens */
-      box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
-    }
+        /* Only show the phone-frame shadow on wider screens */
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+      }
 
-    /* Dark background visible on the sides on desktop */
-    body {
-      background-color: #060608;
-    }
-  </style>
-  <!-- Preload all game images to prevent pop-in during gameplay -->
-  <link rel="preload" href="/assets/images/back.png" as="image" />
-  <link rel="preload" href="/assets/images/success.png" as="image" />
-  <link rel="preload" href="/assets/images/fail.png" as="image" />
-  <link rel="preload" href="/assets/images/blank.png" as="image" />
-  <link rel="preload" href="/assets/images/G.png" as="image" />
-  <link rel="preload" href="/assets/images/E.png" as="image" />
-  <link rel="preload" href="/assets/images/1.png" as="image" />
-  <link rel="preload" href="/assets/images/2.png" as="image" />
-  <link rel="preload" href="/assets/images/3.png" as="image" />
-  <link rel="preload" href="/assets/images/4.png" as="image" />
-  <link rel="preload" href="/assets/images/5.png" as="image" />
-  <link rel="preload" href="/assets/images/normal_background.png" as="image" />
-  <link rel="preload" href="/assets/images/good_wins_background.png" as="image" />
-  <link rel="preload" href="/assets/images/evil_wins_background.png" as="image" />
-  <!-- Character card SVGs -->
-  <link rel="preload" href="/assets/images/characters/Merlin.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Assassin.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Percival.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Morgana.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Mordred.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Oberon.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Loyal_Servant_of_Arthur.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/characters/Minion_of_Mordred.svg" as="image" type="image/svg+xml" />
-  <!-- Approve/reject tokens -->
-  <link rel="preload" href="/assets/images/tokens/approve.svg" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/assets/images/tokens/reject.svg" as="image" type="image/svg+xml" />
-</head>
-<body>
-<div id="root"></div>
-<script type="module" src="/src/index.tsx"></script>
-</body>
+      /* Dark background visible on the sides on desktop */
+      body {
+        background-color: #060608;
+      }
+    </style>
+    <!-- Preload all game images to prevent pop-in during gameplay -->
+    <link rel="preload" href="/assets/images/back.png" as="image" />
+    <link rel="preload" href="/assets/images/success.png" as="image" />
+    <link rel="preload" href="/assets/images/fail.png" as="image" />
+    <link rel="preload" href="/assets/images/blank.png" as="image" />
+    <link rel="preload" href="/assets/images/G.png" as="image" />
+    <link rel="preload" href="/assets/images/E.png" as="image" />
+    <link rel="preload" href="/assets/images/1.png" as="image" />
+    <link rel="preload" href="/assets/images/2.png" as="image" />
+    <link rel="preload" href="/assets/images/3.png" as="image" />
+    <link rel="preload" href="/assets/images/4.png" as="image" />
+    <link rel="preload" href="/assets/images/5.png" as="image" />
+    <link rel="preload" href="/assets/images/normal_background.png" as="image" />
+    <link rel="preload" href="/assets/images/good_wins_background.png" as="image" />
+    <link rel="preload" href="/assets/images/evil_wins_background.png" as="image" />
+    <!-- Character card SVGs -->
+    <link rel="preload" href="/assets/images/characters/Merlin.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Assassin.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Percival.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Morgana.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Mordred.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Oberon.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Loyal_Servant_of_Arthur.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/characters/Minion_of_Mordred.svg" as="image" type="image/svg+xml" />
+    <!-- Approve/reject tokens -->
+    <link rel="preload" href="/assets/images/tokens/approve.svg" as="image" type="image/svg+xml" />
+    <link rel="preload" href="/assets/images/tokens/reject.svg" as="image" type="image/svg+xml" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
 </html>

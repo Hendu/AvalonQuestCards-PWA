@@ -116,7 +116,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     const info = CHARACTERS[name];
     if (info.alignment === 'evil' && evilSlotsLeft <= 0) return false;
     if (info.alignment === 'good' && goodSlotsLeft <= 0) return false;
-    if (name === 'Percival' && !allSelected.includes('Morgana')) return false;
+    // Percival and Morgana are independent -- each is valid without the other.
     return true;
   }
 
@@ -240,9 +240,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                       {info.alignment.toUpperCase()}
                     </span>
                     {isSelected && <span style={styles.selectedBadge}>✓</span>}
-                    {name === 'Percival' && !allSelected.includes('Morgana') && !isSelected && (
-                      <span style={styles.requiresBadge}>needs Morgana</span>
-                    )}
+
                   </button>
                 );
               })}

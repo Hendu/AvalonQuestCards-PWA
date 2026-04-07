@@ -262,6 +262,7 @@ export function getSelectableOptionalCharacters(
     const info = CHARACTERS[name];
     if (info.alignment === 'evil' && evilSlotsLeft <= 0) return false;
     if (info.alignment === 'good' && goodSlotsLeft <= 0) return false;
+
     // Percival only makes sense if Morgana is in or can still be added
     if (name === 'Percival' && !allSelected.includes('Morgana')) return false;
     return true;
