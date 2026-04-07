@@ -220,14 +220,6 @@ export function validateCharacterSelection(
     };
   }
 
-  // Percival requires Morgana
-  if (allSelected.includes('Percival') && !allSelected.includes('Morgana')) {
-    return {
-      isValid: false,
-      message: 'Percival requires Morgana to be in the game.',
-    };
-  }
-
   return { isValid: true, message: 'Ready to start!' };
 }
 
@@ -263,8 +255,6 @@ export function getSelectableOptionalCharacters(
     if (info.alignment === 'evil' && evilSlotsLeft <= 0) return false;
     if (info.alignment === 'good' && goodSlotsLeft <= 0) return false;
 
-    // Percival only makes sense if Morgana is in or can still be added
-    if (name === 'Percival' && !allSelected.includes('Morgana')) return false;
     return true;
   });
 }

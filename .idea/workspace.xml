@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
+    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="v3.3 removed character badge emoji, increased card size on role reveal">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/gameLogic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/gameLogic.ts" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,18 +19,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "Hendu"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Hendu&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Hendu/AvalonQuestCards-PWA.git",
-    "accountId": "d6af98dc-28e8-4f5a-bbbd-562193fb3741"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Hendu/AvalonQuestCards-PWA.git&quot;,
+    &quot;accountId&quot;: &quot;d6af98dc-28e8-4f5a-bbbd-562193fb3741&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/src/utils/gameLogic.ts" root0="SKIP_INSPECTION" />
   </component>
@@ -77,12 +80,21 @@
       <option name="project" value="LOCAL" />
       <updated>1775501711973</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="v3.3 removed character badge emoji, increased card size on role reveal">
+      <option name="closed" value="true" />
+      <created>1775525674251</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1775525674251</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
     <MESSAGE value="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
-    <option name="LAST_COMMIT_MESSAGE" value="v3.1 Increased some text sizes, did some changes for more reliable connectivity, preloaded new images, other minor UI tweaks." />
+    <MESSAGE value="v3.3 removed character badge emoji, increased card size on role reveal" />
+    <option name="LAST_COMMIT_MESSAGE" value="v3.3 removed character badge emoji, increased card size on role reveal" />
   </component>
 </project>
