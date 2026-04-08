@@ -65,6 +65,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
 
   // Which character card is currently zoomed (null = none)
   const [zoomedCard, setZoomedCard] = useState<CharacterName | null>(null);
+  const [codeCopied,  setCodeCopied]  = useState(false);
 
   const allSelected    = getFullCharacterList(availableCharacters);
   const validation     = validateCharacterSelection(availableCharacters, totalPlayers);
@@ -200,10 +201,23 @@ export default function LobbyScreen(props: LobbyScreenProps) {
         <div style={styles.scrollArea}>
 
           {/* Room code */}
-          <div style={styles.roomCodeBlock}>
+          <div
+            style={{ ...styles.roomCodeBlock, cursor: 'pointer' }}
+            onClick={function() {
+              navigator.clipboard.writeText(roomCode).then(function() {
+                setCodeCopied(true);
+                setTimeout(function() { setCodeCopied(false); }, 2000);
+              }).catch(function() {});
+            }}
+          >
             <p style={styles.roomCodeLabel}>ROOM CODE</p>
-            <p style={styles.roomCode}>{roomCode}</p>
-            <p style={styles.roomCodeHint}>Share this with other players</p>
+            <div style={styles.roomCodeRow}>
+              <p style={styles.roomCode}>{roomCode}</p>
+              <span style={styles.copyIcon}>{codeCopied ? '✓' : '⎘'}</span>
+            </div>
+            <p style={styles.roomCodeHint}>
+              {codeCopied ? '✓ Copied!' : 'Tap to copy · Share with other players'}
+            </p>
           </div>
 
           {/* Player roster */}
@@ -412,7 +426,9 @@ const styles: Record<string, React.CSSProperties> = {
   scrollArea:       { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl },
   roomCodeBlock:    { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: SPACING.lg, backgroundColor: 'rgba(22,24,38,0.85)', borderRadius: 16, border: `1px solid ${COLORS.border}` },
   roomCodeLabel:    { fontSize: 12, color: COLORS.textSecondary, letterSpacing: '3px', margin: 0 },
+  roomCodeRow:      { display: 'flex', alignItems: 'center', gap: 10 },
   roomCode:         { fontSize: 36, fontWeight: '800', color: COLORS.gold, letterSpacing: '8px', margin: 0 },
+  copyIcon:         { fontSize: 20, color: COLORS.gold, opacity: 0.7, userSelect: 'none' },
   roomCodeHint:     { fontSize: 12, color: COLORS.textSecondary, margin: 0 },
   section:          { display: 'flex', flexDirection: 'column', gap: SPACING.sm },
   sectionLabel:     { fontSize: 12, color: COLORS.textSecondary, letterSpacing: '3px', fontWeight: '600', margin: 0 },
