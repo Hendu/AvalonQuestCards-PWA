@@ -19,6 +19,7 @@ import React from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName } from '../utils/gameLogic';
 import { COLORS, SPACING } from '../utils/theme';
+import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
 interface TeamVoteScreenProps {
@@ -35,6 +36,7 @@ interface TeamVoteScreenProps {
   haveICastProposalVote: boolean;
   onVote:               (approve: boolean) => void;
   onResetGame:          () => void;
+  isHost:           boolean;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -47,7 +49,7 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
     players, missionPlayerIds, proposalVotes,
     myDeviceId, myCharacter, myName,
     leaderName, currentQuest, proposalCount, totalPlayers,
-    haveICastProposalVote, onVote, onResetGame,
+    haveICastProposalVote, isHost, onVote, onResetGame,
   } = props;
 
   const votesIn  = Object.keys(proposalVotes).length;
@@ -65,7 +67,7 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
           <span style={styles.topBarTitle}>QUEST {currentQuest} · TEAM VOTE</span>
           <div style={styles.topBarRight}>
             {myCharacter && <CharacterBadge character={myCharacter} />}
-            <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+            <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>
 

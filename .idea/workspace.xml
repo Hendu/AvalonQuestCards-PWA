@@ -4,8 +4,16 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="feat: lobby/UX improvements v3.7&#10;&#10;- Pre-game disconnects: guests silently removed from lobby instead of ending game for all; host leave still kills room&#10;- X button instantly fires removePlayerFromLobby (no heartbeat wait)&#10;- Lobby heartbeat 3s interval, 8s timeout; game unchanged at 25s&#10;- StartScreen: form tags for host/join flows so mobile Go button works&#10;- StartScreen: 6-box segmented code entry with auto-advance, backspace, paste, focus ring, gold cursor&#10;- StartScreen: Enter on name advances to first code box (join) or submits (host)&#10;- StartScreen: player name persisted in localStorage, pre-filled on return&#10;- LobbyScreen: 🔒 emoji on locked character badges">
-      <change beforePath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" afterDir="false" />
+    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="Added room code copy">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/useGameState.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/useGameState.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AssassinationScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AssassinationScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/GameBoardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/GameBoardScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/StartScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/StartScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/TeamProposeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamProposeScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/TeamVoteResultsScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamVoteResultsScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/TeamVoteScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/TeamVoteScreen.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -119,7 +127,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775690331837</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Added room code copy">
+      <option name="closed" value="true" />
+      <created>1775691149127</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1775691149127</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="UnknownFeatures">
@@ -133,6 +149,7 @@
     <MESSAGE value="Added character images from real game" />
     <MESSAGE value="Minor Role reveal cosmetic fix" />
     <MESSAGE value="feat: lobby/UX improvements v3.7&#10;&#10;- Pre-game disconnects: guests silently removed from lobby instead of ending game for all; host leave still kills room&#10;- X button instantly fires removePlayerFromLobby (no heartbeat wait)&#10;- Lobby heartbeat 3s interval, 8s timeout; game unchanged at 25s&#10;- StartScreen: form tags for host/join flows so mobile Go button works&#10;- StartScreen: 6-box segmented code entry with auto-advance, backspace, paste, focus ring, gold cursor&#10;- StartScreen: Enter on name advances to first code box (join) or submits (host)&#10;- StartScreen: player name persisted in localStorage, pre-filled on return&#10;- LobbyScreen:  emoji on locked character badges" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: lobby/UX improvements v3.7&#10;&#10;- Pre-game disconnects: guests silently removed from lobby instead of ending game for all; host leave still kills room&#10;- X button instantly fires removePlayerFromLobby (no heartbeat wait)&#10;- Lobby heartbeat 3s interval, 8s timeout; game unchanged at 25s&#10;- StartScreen: form tags for host/join flows so mobile Go button works&#10;- StartScreen: 6-box segmented code entry with auto-advance, backspace, paste, focus ring, gold cursor&#10;- StartScreen: Enter on name advances to first code box (join) or submits (host)&#10;- StartScreen: player name persisted in localStorage, pre-filled on return&#10;- LobbyScreen:  emoji on locked character badges" />
+    <MESSAGE value="Added room code copy" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added room code copy" />
   </component>
 </project>

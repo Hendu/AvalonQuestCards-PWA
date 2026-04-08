@@ -573,6 +573,29 @@ export async function markPlayerDisconnected(
 
 
 // -----------------------------------------------------------------------------
+// markPlayerQuit
+//
+// Called when a player deliberately taps the X and confirms.
+// Writes their name with " quit the game" suffix so the message on other
+// devices reads "Ryan quit the game" rather than "Ryan disconnected or quit."
+// Host quitting still just deletes the room.
+// -----------------------------------------------------------------------------
+export async function markPlayerQuit(
+  roomCode: string,
+  playerName: string,
+  isHost: boolean
+): Promise<void> {
+  if (isHost) {
+    await deleteDoc(doc(db, 'rooms', roomCode));
+  } else {
+    await updateDoc(doc(db, 'rooms', roomCode), {
+      disconnectedPlayer: `${playerName} quit the game`,
+    });
+  }
+}
+
+
+// -----------------------------------------------------------------------------
 // subscribeToRoom
 // -----------------------------------------------------------------------------
 export function subscribeToRoom(

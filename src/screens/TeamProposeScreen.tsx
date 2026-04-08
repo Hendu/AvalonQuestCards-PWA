@@ -20,6 +20,7 @@ import React, { useState } from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName, getMissionSize, getFailsRequired, CHARACTERS } from '../utils/gameLogic';
 import { COLORS, SPACING } from '../utils/theme';
+import QuitButton from '../components/QuitButton';
 import QuestTracker from '../components/QuestTracker';
 import CharacterBadge from '../components/CharacterBadge';
 import { QuestOutcome } from '../utils/gameLogic';
@@ -38,13 +39,14 @@ interface TeamProposeScreenProps {
   proposalCount:    number;
   onSubmitProposal: (deviceIds: string[]) => void;
   onResetGame:      () => void;
+  isHost:           boolean;
 }
 
 export default function TeamProposeScreen(props: TeamProposeScreenProps) {
   const {
     isLeader, leaderName, players, currentQuest, totalPlayers,
     goodWins, evilWins, questOutcomes, myName, myCharacter,
-    proposalCount, onSubmitProposal, onResetGame,
+    proposalCount, isHost, onSubmitProposal, onResetGame,
   } = props;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -82,7 +84,7 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
           <span style={styles.topBarTitle}>AVALON QUEST CARDS</span>
           <div style={styles.topBarRight}>
             {myCharacter && <CharacterBadge character={myCharacter} />}
-            <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+            <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>
 

@@ -64,6 +64,7 @@ import {
   subscribeToRoom,
   sendHeartbeat,
   markPlayerDisconnected,
+  markPlayerQuit,
   removePlayerFromLobby,
 } from '../utils/firebaseGame';
 
@@ -620,8 +621,21 @@ export function useGameState() {
   }
 
 
-  // ---------------------------------------------------------------------------
-  // FIRESTORE SYNC
+  // Deliberate quit -- fires immediately, bypasses heartbeat timeout.
+  // Writes a clean "X quit the game" message to Firestore so other devices
+  // see a clear quit message rather than a disconnect message.
+  async function quitGame(): Promise<void> {
+    releaseWakeLock();
+    if (state.gameMode === 'network' && state.roomCode) {
+      await markPlayerQuit(state.roomCode, state.myName, state.isHost);
+    }
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    localVotesRef.current = [];
+    setState(getInitialState(myDeviceId));
+  }
   //
   // When Firestore sends an update, compute all derived flags and merge
   // into local state. This keeps all devices in sync.
@@ -632,7 +646,11 @@ export function useGameState() {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      const msg = `${data.disconnectedPlayer} disconnected or quit.`;
+      // disconnectedPlayer is either:
+      //   "PlayerName" -- heartbeat timeout, we append " disconnected."
+      //   "PlayerName quit the game" -- deliberate quit, use as-is
+      const raw = data.disconnectedPlayer;
+      const msg = raw.endsWith(' quit the game') ? raw : `${raw} disconnected.`;
       setState(function() {
         const fresh = getInitialState(myDeviceId);
         fresh.disconnectMessage = msg;
@@ -747,5 +765,6 @@ export function useGameState() {
     // Shared
     toggleSound,
     resetGame,
+    quitGame,
   };
 }

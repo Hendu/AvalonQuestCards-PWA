@@ -51,6 +51,7 @@ export default function App() {
     submitAssassination,
     toggleSound,
     resetGame,
+    quitGame,
   } = useGameState();
 
   const { phase, gameMode, isHost } = state;
@@ -138,8 +139,9 @@ export default function App() {
         myName={state.myName}
         myCharacter={state.myCharacter}
         proposalCount={state.proposalCount}
+        isHost={isHost}
         onSubmitProposal={hostSubmitTeamProposal}
-        onResetGame={resetGame}
+        onResetGame={quitGame}
       />
     );
   }
@@ -166,8 +168,9 @@ export default function App() {
         proposalCount={state.proposalCount}
         totalPlayers={state.totalPlayers}
         haveICastProposalVote={state.haveICastProposalVote}
+        isHost={isHost}
         onVote={castTeamProposalVote}
-        onResetGame={resetGame}
+        onResetGame={quitGame}
       />
     );
   }
@@ -188,7 +191,7 @@ export default function App() {
         approveCount={result.approveCount}
         rejectCount={result.rejectCount}
         onContinue={hostAdvanceToMissionVoting}
-        onResetGame={resetGame}
+        onResetGame={quitGame}
       />
     );
   }
@@ -204,8 +207,9 @@ export default function App() {
         myDeviceId={state.myDeviceId}
         myCharacter={state.myCharacter}
         amIAssassin={state.amIAssassin}
+        isHost={isHost}
         onSubmitTarget={submitAssassination}
-        onResetGame={resetGame}
+        onResetGame={quitGame}
       />
     );
   }
@@ -230,7 +234,7 @@ export default function App() {
       onVote={handleVote}
       onAdvanceToNextQuest={handleAdvance}
       onResetVotes={resetLocalVotes}
-      onResetGame={resetGame}
+      onResetGame={quitGame}
       onToggleSound={toggleSound}
       onRevealResults={function() {}}  // auto-reveal handles this in v3
     />

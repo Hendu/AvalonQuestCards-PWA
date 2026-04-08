@@ -23,6 +23,7 @@ import QuestTracker from '../components/QuestTracker';
 import VoteCards    from '../components/VoteCards';
 import VoteResults  from '../components/VoteResults';
 import { COLORS, SPACING } from '../utils/theme';
+import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
 interface GameBoardScreenProps {
@@ -167,7 +168,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 {gameMode === 'network' && myCharacter && (
                   <CharacterBadge character={myCharacter} />
                 )}
-                <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+                <QuitButton onConfirm={onResetGame} isHost={isHost} />
               </div>
             </div>
 

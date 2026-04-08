@@ -19,6 +19,7 @@ import React from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName } from '../utils/gameLogic';
 import { COLORS, SPACING } from '../utils/theme';
+import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
 interface TeamVoteResultsScreenProps {
@@ -61,7 +62,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
           <span style={styles.topBarTitle}>TEAM VOTE RESULTS</span>
           <div style={styles.topBarRight}>
             {myCharacter && <CharacterBadge character={myCharacter} />}
-            <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+            <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>
 

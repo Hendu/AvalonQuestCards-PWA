@@ -21,6 +21,7 @@ import React, { useState } from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName, CHARACTERS } from '../utils/gameLogic';
 import { COLORS, SPACING } from '../utils/theme';
+import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
 interface AssassinationScreenProps {
@@ -31,6 +32,7 @@ interface AssassinationScreenProps {
   amIAssassin:       boolean;
   onSubmitTarget:    (targetDeviceId: string) => void;
   onResetGame:       () => void;
+  isHost:           boolean;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -41,7 +43,7 @@ function getPlayerName(players: Player[], deviceId: string): string {
 export default function AssassinationScreen(props: AssassinationScreenProps) {
   const {
     players, characters, myDeviceId, myCharacter,
-    amIAssassin, onSubmitTarget, onResetGame,
+    amIAssassin, isHost, onSubmitTarget, onResetGame,
   } = props;
 
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export default function AssassinationScreen(props: AssassinationScreenProps) {
           <span style={styles.topBarTitle}>ASSASSINATION</span>
           <div style={styles.topBarRight}>
             {myCharacter && <CharacterBadge character={myCharacter} />}
-            <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+            <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>
 
