@@ -342,10 +342,10 @@ function PlayerPicker(props: { selected: number; onSelect: (n: number) => void }
 }
 
 const pickerStyles: Record<string, React.CSSProperties> = {
-  row:            { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  button:         { width: 56, height: 56, borderRadius: 12, border: `1px solid ${COLORS.border}`, backgroundColor: 'rgba(22,24,38,0.85)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  row:            { display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'center', gap: 6, width: '100%' },
+  button:         { width: 48, height: 48, borderRadius: 10, border: `1px solid ${COLORS.border}`, backgroundColor: 'rgba(22,24,38,0.85)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   buttonSelected: { border: `1px solid ${COLORS.gold}`, backgroundColor: 'rgba(30,33,54,0.95)' },
-  text:           { fontSize: 20, fontWeight: '600', color: COLORS.textMuted },
+  text:           { fontSize: 17, fontWeight: '600', color: COLORS.textMuted },
   textSelected:   { color: COLORS.gold },
 };
 
