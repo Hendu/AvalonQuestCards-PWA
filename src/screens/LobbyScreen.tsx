@@ -254,7 +254,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                 return (
                   <button
                     key={name}
-                    style={{ ...styles.charCard, ...styles.charCardLocked }}
+                    style={{ ...styles.charCard, ...styles.charCardLocked, ...styles.charCardSelected }}
                     onClick={function() { setZoomedCard(name); }}
                   >
                     <div style={{ ...styles.charCardFrame, borderColor: info.alignment === 'good' ? COLORS.goodDim : COLORS.evilDim }}>
@@ -268,7 +268,8 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                     }}>
                       {info.alignment.toUpperCase()}
                     </span>
-                    <span style={styles.lockedBadge}>LOCKED</span>
+                    <span style={styles.lockedBadge}>🔒 LOCKED</span>
+                    <span style={styles.selectedBadge}>✓</span>
                   </button>
                 );
               })}

@@ -44,6 +44,7 @@ import {
   onSnapshot,
   deleteDoc,
   arrayUnion,
+  arrayRemove,
   serverTimestamp,
   getDoc,
   Unsubscribe,
@@ -531,6 +532,25 @@ export async function sendHeartbeat(
   } catch (e) {
     // Room may have been deleted -- silently ignore
   }
+}
+
+
+// -----------------------------------------------------------------------------
+// removePlayerFromLobby
+//
+// Called by host when a guest drops during the lobby phase.
+// Simply removes them from the players array -- everyone else stays in the room.
+// The player object must match exactly what was stored (Firestore arrayRemove
+// uses deep equality), so we pass the full Player object.
+// -----------------------------------------------------------------------------
+export async function removePlayerFromLobby(
+  roomCode: string,
+  player:   Player
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+  await updateDoc(roomRef, {
+    players: arrayRemove(player),
+  });
 }
 
 

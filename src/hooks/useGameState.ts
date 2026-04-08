@@ -64,6 +64,7 @@ import {
   subscribeToRoom,
   sendHeartbeat,
   markPlayerDisconnected,
+  removePlayerFromLobby,
 } from '../utils/firebaseGame';
 
 import { getDeviceId } from '../utils/deviceId';
@@ -246,13 +247,17 @@ export function useGameState() {
     sendHeartbeat(roomCode, deviceId);
     const interval = setInterval(function() {
       sendHeartbeat(roomCode, deviceId);
-    }, 10000);
+    }, 3000);
     return function() { clearInterval(interval); };
   }, [state.gameMode, state.phase, state.roomCode]);
 
 
   // ---------------------------------------------------------------------------
   // DISCONNECT DETECTION
+  //
+  // During lobby: fast 15s timeout, just remove the dropped player from the
+  // list -- don't send everyone home. Host disconnecting still ends the room.
+  // During game: 25s timeout, mark disconnected and send everyone home.
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (!state.isHost || state.gameMode !== 'network' || state.phase === 'setup') return;
@@ -261,17 +266,27 @@ export function useGameState() {
       if (!s.roomCode || s.phase === 'setup' || s.phase === 'gameover') return;
       const heartbeats = (s as any)._heartbeats as Record<string, number> | undefined;
       if (!heartbeats) return;
-      const now        = Date.now();
-      const TIMEOUT_MS = 25000;
+      const now = Date.now();
+      const inLobby    = s.phase === 'lobby';
+      // Tighter timeout in lobby so the slot opens up quickly for someone else
+      const TIMEOUT_MS = inLobby ? 8000 : 25000;
+
       for (const player of s.players) {
-        const lastSeen = heartbeats[player.deviceId] || 0;
+        const lastSeen     = heartbeats[player.deviceId] || 0;
+        const hostDeviceId = getSortedPlayers(s.players)[0]?.deviceId;
+        const isPlayerHost = player.deviceId === hostDeviceId;
         if (now - lastSeen > TIMEOUT_MS) {
-          const isPlayerHost = player.deviceId === s.players[0]?.deviceId;
-          markPlayerDisconnected(s.roomCode!, player.name, isPlayerHost);
+          if (inLobby && !isPlayerHost) {
+            // Guest dropped before game started -- quietly remove from list
+            removePlayerFromLobby(s.roomCode!, player);
+          } else {
+            // Host dropped in lobby, or anyone dropped mid-game -- end room
+            markPlayerDisconnected(s.roomCode!, player.name, isPlayerHost);
+          }
           break;
         }
       }
-    }, 10000);
+    }, 3000);  // check every 3s -- fast enough for lobby, acceptable for game
     return function() { clearInterval(interval); };
   }, [state.isHost, state.gameMode, state.phase]);
 
@@ -583,8 +598,18 @@ export function useGameState() {
 
   function resetGame(): void {
     releaseWakeLock();
-    if (state.gameMode === 'network' && state.isHost && state.roomCode) {
-      deleteRoom(state.roomCode);
+    if (state.gameMode === 'network' && state.roomCode) {
+      if (state.isHost) {
+        // Host leaving -- delete the whole room
+        deleteRoom(state.roomCode);
+      } else if (state.phase === 'lobby') {
+        // Guest leaving lobby -- immediately remove from player list
+        // so the slot opens up right away without waiting for heartbeat timeout
+        const myPlayer = state.players.find(function(p) { return p.deviceId === myDeviceId; });
+        if (myPlayer) removePlayerFromLobby(state.roomCode, myPlayer);
+      }
+      // Mid-game guest leaving: heartbeat timeout handles it
+      // (disconnectedPlayer field notifies everyone)
     }
     if (unsubscribeRef.current) {
       unsubscribeRef.current();

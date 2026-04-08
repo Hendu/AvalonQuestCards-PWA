@@ -4,8 +4,12 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="Added character images from real game">
-      <change beforePath="$PROJECT_DIR$/src/screens/RoleRevealScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/RoleRevealScreen.tsx" afterDir="false" />
+    <list default="true" id="d25c6996-012f-4326-93e8-d400cb852c49" name="Changes" comment="Minor Role reveal cosmetic fix">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hooks/useGameState.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/hooks/useGameState.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/LobbyScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/StartScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/StartScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/firebaseGame.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/firebaseGame.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -103,8 +107,19 @@
       <option name="project" value="LOCAL" />
       <updated>1775591611115</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Minor Role reveal cosmetic fix">
+      <option name="closed" value="true" />
+      <created>1775593350873</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1775593350873</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.ts" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="v3.0 - Converted network game to use all game mechanics, bugs probably not all ironed out, dev but no real QA testing" />
@@ -112,6 +127,7 @@
     <MESSAGE value="v3.3 removed character badge emoji, increased card size on role reveal" />
     <MESSAGE value="Removed Morgana dependency to select Percival" />
     <MESSAGE value="Added character images from real game" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added character images from real game" />
+    <MESSAGE value="Minor Role reveal cosmetic fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="Minor Role reveal cosmetic fix" />
   </component>
 </project>
