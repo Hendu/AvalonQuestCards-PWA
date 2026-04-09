@@ -385,13 +385,17 @@ export default function LobbyScreen(props: LobbyScreenProps) {
               })}
             </div>
 
-            {/* Validation message */}
-            <p style={{
-              ...styles.validationMessage,
-              color: validation.isValid ? COLORS.good : COLORS.textSecondary,
-            }}>
-              {validation.message}
-            </p>
+            {/* Validation message -- host only */}
+            {isHost && (
+              <p style={{
+                ...styles.validationMessage,
+                color: canStart ? COLORS.good : COLORS.textSecondary,
+              }}>
+                {players.length < totalPlayers
+                  ? `Waiting for ${totalPlayers - players.length} more player${totalPlayers - players.length !== 1 ? 's' : ''} to join`
+                  : validation.message}
+              </p>
+            )}
           </div>
 
           {isHost && (
@@ -405,8 +409,15 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           )}
 
           {!isHost && (
-            <p style={styles.guestWaiting}>
-              ⏳ Waiting for host to configure characters and start the game...
+            <p style={{
+              ...styles.guestWaiting,
+              color: canStart ? COLORS.good : COLORS.textSecondary,
+            }}>
+              {players.length < totalPlayers
+                ? `⏳ Waiting for ${totalPlayers - players.length} more player${totalPlayers - players.length !== 1 ? 's' : ''} to join...`
+                : !canStart
+                  ? '⏳ Waiting for host to configure characters...'
+                  : '✓ Ready to start!'}
             </p>
           )}
 
