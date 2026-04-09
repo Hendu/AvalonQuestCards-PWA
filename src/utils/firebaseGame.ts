@@ -1,40 +1,16 @@
 // =============================================================================
-// firebaseGame.ts
+// firebaseGame.ts  (v3.9 -- reconnect support)
 //
 // All Firestore operations for multiplayer rooms.
 //
-// ROOM DOCUMENT STRUCTURE (v3):
+// NEW in v3.9:
+//   pendingDisconnect: PendingDisconnect | null
+//     Non-null freezes gameplay for everyone; host sees a wait modal.
+//     Cleared when the dropped player rejoins OR the host gives up.
 //
-//   rooms/{roomCode}
-//     hostDeviceId: string
-//     totalPlayers: number
-//     players: Player[]
-//       { deviceId, name, joinedAt }
-//     currentQuest: number          (1-5)
-//     goodWins: number
-//     evilWins: number
-//     questOutcomes: QuestOutcome[]
-//     phase: GamePhase
-//     missionPlayerIds: string[]    (deviceIds on THIS mission)
-//     votes: { deviceId, vote }[]
-//     lastQuestResult: QuestResult | null
-//     winner: GameWinner
-//     createdAt: timestamp
-//     heartbeats: { [deviceId]: lastSeenTimestamp }
-//     disconnectedPlayer: string | null
-//
-//     -- v3 additions --
-//     availableCharacters: CharacterName[]    host's optional selection (stored for reference)
-//     characters: { [deviceId]: CharacterName }  assigned at game start
-//     confirmedRoleReveal: string[]           deviceIds who tapped "Next" on role reveal
-//     leaderIndex: number                     index into players[] for current team leader
-//     proposalVotes: { [deviceId]: boolean }  approve=true, reject=false
-//     proposalCount: number                   proposals made on current quest (max 5)
-//     assassinTarget: string | null           deviceId chosen by the Assassin
-//
-// PHASE FLOW (v3 network):
-//   lobby -> role-reveal -> team-propose -> team-vote -> team-vote-results
-//         -> voting -> results -> [next quest or assassination] -> gameover
+//   setPendingDisconnect()   -- host calls this when heartbeat times out mid-game
+//   hostGiveUpOnReconnect()  -- host gives up; kicks everyone via disconnectedPlayer
+//   rejoinRoom()             -- dropped player rejoins; rewrites their deviceId everywhere
 // =============================================================================
 
 import {
@@ -77,6 +53,13 @@ export interface PlayerVote {
   vote:     VoteResult;
 }
 
+// v3.9: Pending disconnect -- freeze gameplay, wait for rejoin
+export interface PendingDisconnect {
+  deviceId:   string;   // dropped player's last-known deviceId
+  name:       string;   // display name (used for rejoin matching)
+  detectedAt: number;   // timestamp when host detected the drop
+}
+
 export interface RoomData {
   hostDeviceId:        string;
   totalPlayers:        number;
@@ -102,14 +85,14 @@ export interface RoomData {
   proposalVotes:       Record<string, boolean>;
   proposalCount:       number;
   assassinTarget:      string | null;
+
+  // v3.9 reconnect
+  pendingDisconnect:   PendingDisconnect | null;
 }
 
 
 // -----------------------------------------------------------------------------
 // createRoom
-//
-// Called by host. Creates the room document.
-// characters and leaderIndex are empty until host hits Start Game.
 // -----------------------------------------------------------------------------
 export async function createRoom(
   roomCode:     string,
@@ -142,7 +125,6 @@ export async function createRoom(
     createdAt:           serverTimestamp(),
     heartbeats:          { [hostDeviceId]: now },
     disconnectedPlayer:  null,
-    // v3 initial values
     availableCharacters: [],
     characters:          {},
     confirmedRoleReveal: [],
@@ -150,6 +132,7 @@ export async function createRoom(
     proposalVotes:       {},
     proposalCount:       0,
     assassinTarget:      null,
+    pendingDisconnect:   null,
   };
 
   await setDoc(roomRef, initialData);
@@ -201,11 +184,156 @@ export async function joinRoom(
 
 
 // -----------------------------------------------------------------------------
-// updateAvailableCharacters
+// rejoinRoom  (v3.9)
 //
-// Host only. Called as they toggle characters in the lobby picker.
-// Saves their current optional selection so it persists in Firestore.
-// (Merlin + Assassin are always implicit -- not stored separately.)
+// Called when a disconnected player taps "Rejoin Game" on the start screen.
+//
+// Matches the player by name (case-insensitive) OR by unchanged deviceId.
+// Rewrites their old deviceId to the new one in every field that stores it,
+// then clears pendingDisconnect so everyone's freeze modal disappears.
+// -----------------------------------------------------------------------------
+export async function rejoinRoom(
+  roomCode:    string,
+  newDeviceId: string,
+  playerName:  string
+): Promise<{ success: boolean; error?: string; wasHost?: boolean }> {
+  const roomRef  = doc(db, 'rooms', roomCode);
+  const snapshot = await getDoc(roomRef);
+
+  if (!snapshot.exists()) {
+    return { success: false, error: 'Room no longer exists.' };
+  }
+
+  const data = snapshot.data() as RoomData;
+
+  // Match by name (primary -- handles cleared localStorage) or unchanged deviceId
+  const oldPlayer = data.players.find(function(p) {
+    return (
+      p.name.toLowerCase() === playerName.toLowerCase() ||
+      p.deviceId === newDeviceId
+    );
+  });
+
+  if (!oldPlayer) {
+    return { success: false, error: 'Could not find your player slot in this room.' };
+  }
+
+  const oldDeviceId = oldPlayer.deviceId;
+
+  // If deviceId hasn't changed, just clear pendingDisconnect and refresh heartbeat
+  if (oldDeviceId === newDeviceId) {
+    await updateDoc(roomRef, {
+      [`heartbeats.${newDeviceId}`]: Date.now(),
+      pendingDisconnect: null,
+    });
+    return { success: true, wasHost: data.hostDeviceId === newDeviceId };
+  }
+
+  // ------------------------------------------------------------------
+  // Rewrite oldDeviceId -> newDeviceId throughout the document.
+  // ------------------------------------------------------------------
+
+  // 1. players[] -- replace the player object
+  const newPlayers = data.players.map(function(p) {
+    if (p.deviceId !== oldDeviceId) return p;
+    return { ...p, deviceId: newDeviceId };
+  });
+
+  // 2. characters{} -- rename the key
+  const newCharacters: Record<string, CharacterName> = {};
+  for (const [id, char] of Object.entries(data.characters || {})) {
+    newCharacters[id === oldDeviceId ? newDeviceId : id] = char;
+  }
+
+  // 3. heartbeats{} -- add new key, drop old
+  const newHeartbeats: Record<string, number> = { ...(data.heartbeats || {}) };
+  newHeartbeats[newDeviceId] = Date.now();
+  delete newHeartbeats[oldDeviceId];
+
+  // 4. confirmedRoleReveal[] -- replace id if present
+  const newConfirmed = (data.confirmedRoleReveal || []).map(function(id) {
+    return id === oldDeviceId ? newDeviceId : id;
+  });
+
+  // 5. proposalVotes{} -- rename key if present
+  const newProposalVotes: Record<string, boolean> = {};
+  for (const [id, vote] of Object.entries(data.proposalVotes || {})) {
+    newProposalVotes[id === oldDeviceId ? newDeviceId : id] = vote;
+  }
+
+  // 6. missionPlayerIds[] -- replace if present
+  const newMissionIds = (data.missionPlayerIds || []).map(function(id) {
+    return id === oldDeviceId ? newDeviceId : id;
+  });
+
+  // 7. votes[] -- replace deviceId in vote objects
+  const newVotes = (data.votes || []).map(function(v) {
+    if (v.deviceId !== oldDeviceId) return v;
+    return { ...v, deviceId: newDeviceId };
+  });
+
+  // 8. hostDeviceId -- if somehow this was the host
+  const newHostDeviceId = data.hostDeviceId === oldDeviceId ? newDeviceId : data.hostDeviceId;
+
+  await updateDoc(roomRef, {
+    hostDeviceId:        newHostDeviceId,
+    players:             newPlayers,
+    characters:          newCharacters,
+    heartbeats:          newHeartbeats,
+    confirmedRoleReveal: newConfirmed,
+    proposalVotes:       newProposalVotes,
+    missionPlayerIds:    newMissionIds,
+    votes:               newVotes,
+    pendingDisconnect:   null,
+  });
+
+  return { success: true, wasHost: newHostDeviceId === newDeviceId };
+}
+
+
+// -----------------------------------------------------------------------------
+// setPendingDisconnect  (v3.9)
+//
+// Host calls this when a guest's heartbeat times out mid-game.
+// Writes pendingDisconnect to Firestore, which causes all clients to freeze
+// and show a wait modal. Does NOT delete the room.
+// -----------------------------------------------------------------------------
+export async function setPendingDisconnect(
+  roomCode: string,
+  player:   Player
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+  const pd: PendingDisconnect = {
+    deviceId:   player.deviceId,
+    name:       player.name,
+    detectedAt: Date.now(),
+  };
+  await updateDoc(roomRef, {
+    pendingDisconnect: pd,
+  });
+}
+
+
+// -----------------------------------------------------------------------------
+// hostGiveUpOnReconnect  (v3.9)
+//
+// Host tapped "End Game" in the wait modal. Clears pendingDisconnect and
+// writes disconnectedPlayer, which triggers the existing kick-everyone path.
+// -----------------------------------------------------------------------------
+export async function hostGiveUpOnReconnect(
+  roomCode:   string,
+  playerName: string
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+  await updateDoc(roomRef, {
+    pendingDisconnect:  null,
+    disconnectedPlayer: playerName,
+  });
+}
+
+
+// -----------------------------------------------------------------------------
+// updateAvailableCharacters
 // -----------------------------------------------------------------------------
 export async function updateAvailableCharacters(
   roomCode:   string,
@@ -220,16 +348,11 @@ export async function updateAvailableCharacters(
 
 // -----------------------------------------------------------------------------
 // startGame
-//
-// Host only. Assigns characters, sets leaderIndex to 0, moves to role-reveal.
-// The full character assignment is computed on the host's device and written
-// to Firestore. Players are sorted by joinedAt before assignment so order
-// is deterministic.
 // -----------------------------------------------------------------------------
 export async function startGame(
-  roomCode:          string,
-  characters:        Record<string, CharacterName>,  // pre-computed by host
-  availableChars:    CharacterName[]                  // optional selection for storage
+  roomCode:       string,
+  characters:     Record<string, CharacterName>,
+  availableChars: CharacterName[]
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
   await updateDoc(roomRef, {
@@ -244,11 +367,6 @@ export async function startGame(
 
 // -----------------------------------------------------------------------------
 // confirmRoleReveal
-//
-// Called by each player when they tap "Next" on their role card.
-// Adds their deviceId to confirmedRoleReveal[].
-// The host's device watches this array; when length === totalPlayers,
-// it automatically advances to team-propose.
 // -----------------------------------------------------------------------------
 export async function confirmRoleReveal(
   roomCode: string,
@@ -263,9 +381,6 @@ export async function confirmRoleReveal(
 
 // -----------------------------------------------------------------------------
 // advanceToTeamPropose
-//
-// Host only. Called after all players have confirmed role reveal.
-// Clears proposal state for the new proposal round.
 // -----------------------------------------------------------------------------
 export async function advanceToTeamPropose(
   roomCode: string
@@ -281,8 +396,6 @@ export async function advanceToTeamPropose(
 
 // -----------------------------------------------------------------------------
 // submitTeamProposal
-//
-// Leader only. Saves the proposed team and moves everyone to team-vote.
 // -----------------------------------------------------------------------------
 export async function submitTeamProposal(
   roomCode:         string,
@@ -291,7 +404,7 @@ export async function submitTeamProposal(
   const roomRef = doc(db, 'rooms', roomCode);
   await updateDoc(roomRef, {
     missionPlayerIds: missionPlayerIds,
-    proposalVotes:    {},  // clear any leftover votes
+    proposalVotes:    {},
     phase:            'team-vote',
   });
 }
@@ -299,10 +412,6 @@ export async function submitTeamProposal(
 
 // -----------------------------------------------------------------------------
 // castProposalVote
-//
-// Called by each player to vote approve/reject on the proposed team.
-// Uses a map field (proposalVotes.deviceId = bool) so each player
-// can only vote once and re-submitting overwrites cleanly.
 // -----------------------------------------------------------------------------
 export async function castProposalVote(
   roomCode: string,
@@ -318,23 +427,17 @@ export async function castProposalVote(
 
 // -----------------------------------------------------------------------------
 // resolveTeamVote
-//
-// Host only. Called after all proposal votes are in.
-// If approved: move to team-vote-results (then on to voting).
-// If rejected: increment proposalCount + leaderIndex, back to team-propose.
-// If this was the 5th rejection: evil wins automatically.
 // -----------------------------------------------------------------------------
 export async function resolveTeamVote(
-  roomCode:      string,
-  approved:      boolean,
-  nextLeaderIdx: number,
+  roomCode:         string,
+  approved:         boolean,
+  nextLeaderIdx:    number,
   newProposalCount: number,
-  evilAutoWin:   boolean   // true if this rejection was the 5th
+  evilAutoWin:      boolean
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
 
   if (evilAutoWin) {
-    // 5 rejections -- evil wins
     await updateDoc(roomRef, {
       winner:        'evil',
       phase:         'gameover',
@@ -344,18 +447,12 @@ export async function resolveTeamVote(
   }
 
   if (approved) {
-    // Move to results display before mission voting.
-    // Also update leaderIndex and proposalCount now so that when the next
-    // quest begins (after advanceToNextQuest), the leader is already correct.
-    // proposalCount is NOT reset here -- it resets in advanceToNextQuest.
-    // leaderIndex increments so the next quest starts with a new leader.
     await updateDoc(roomRef, {
       phase:         'team-vote-results',
       leaderIndex:   nextLeaderIdx,
       proposalCount: newProposalCount,
     });
   } else {
-    // Rejection: pass leadership, reset proposal
     await updateDoc(roomRef, {
       leaderIndex:      nextLeaderIdx,
       proposalCount:    newProposalCount,
@@ -369,10 +466,6 @@ export async function resolveTeamVote(
 
 // -----------------------------------------------------------------------------
 // advanceToMissionVoting
-//
-// Host only. Called from team-vote-results screen after everyone has seen
-// who voted what. Moves into actual success/fail voting.
-// Clears mission votes from previous quests.
 // -----------------------------------------------------------------------------
 export async function advanceToMissionVoting(
   roomCode: string
@@ -386,7 +479,7 @@ export async function advanceToMissionVoting(
 
 
 // -----------------------------------------------------------------------------
-// selectMissionPlayers (kept for compatibility but replaced by submitTeamProposal)
+// selectMissionPlayers (kept for compatibility)
 // -----------------------------------------------------------------------------
 export async function selectMissionPlayers(
   roomCode:         string,
@@ -398,8 +491,6 @@ export async function selectMissionPlayers(
 
 // -----------------------------------------------------------------------------
 // submitVote
-//
-// Called by a mission player when they tap a card (success/fail).
 // -----------------------------------------------------------------------------
 export async function submitVote(
   roomCode: string,
@@ -416,9 +507,6 @@ export async function submitVote(
 
 // -----------------------------------------------------------------------------
 // revealResults
-//
-// Host only. Evaluates mission votes and writes results.
-// If good wins 3 quests, moves to assassination instead of gameover.
 // -----------------------------------------------------------------------------
 export async function revealResults(
   roomCode:      string,
@@ -432,16 +520,12 @@ export async function revealResults(
   const roomRef = doc(db, 'rooms', roomCode);
   const shuffledVotes = shuffleArray(votes);
 
-  // If good would win, go to assassination phase first -- the winner is not
-  // declared until the assassination resolves. We do NOT write winner: 'good'
-  // here because that would trigger the good-wins background and music on all
-  // devices before the Assassin has taken their shot.
   let nextPhase: GamePhase;
   let pendingWinner: GameWinner;
 
   if (winner === 'good') {
     nextPhase     = 'assassination';
-    pendingWinner = null;   // winner stays null until assassination resolves
+    pendingWinner = null;
   } else if (winner === 'evil') {
     nextPhase     = 'gameover';
     pendingWinner = 'evil';
@@ -464,10 +548,6 @@ export async function revealResults(
 
 // -----------------------------------------------------------------------------
 // advanceToNextQuest
-//
-// Host only. Resets mission/vote state for the next quest.
-// leaderIndex continues incrementing from where it left off.
-// proposalCount resets to 0 for the new quest.
 // -----------------------------------------------------------------------------
 export async function advanceToNextQuest(
   roomCode:        string,
@@ -490,9 +570,6 @@ export async function advanceToNextQuest(
 
 // -----------------------------------------------------------------------------
 // submitAssassinationTarget
-//
-// Assassin only. Writes their chosen target and resolves the game.
-// If they picked Merlin, evil wins. Otherwise good wins.
 // -----------------------------------------------------------------------------
 export async function submitAssassinationTarget(
   roomCode:       string,
@@ -530,18 +607,13 @@ export async function sendHeartbeat(
       [`heartbeats.${deviceId}`]: Date.now(),
     });
   } catch (e) {
-    // Room may have been deleted -- silently ignore
+    // Room deleted -- silently ignore
   }
 }
 
 
 // -----------------------------------------------------------------------------
 // removePlayerFromLobby
-//
-// Called by host when a guest drops during the lobby phase.
-// Simply removes them from the players array -- everyone else stays in the room.
-// The player object must match exactly what was stored (Firestore arrayRemove
-// uses deep equality), so we pass the full Player object.
 // -----------------------------------------------------------------------------
 export async function removePlayerFromLobby(
   roomCode: string,
@@ -574,16 +646,11 @@ export async function markPlayerDisconnected(
 
 // -----------------------------------------------------------------------------
 // markPlayerQuit
-//
-// Called when a player deliberately taps the X and confirms.
-// Writes their name with " quit the game" suffix so the message on other
-// devices reads "Ryan quit the game" rather than "Ryan disconnected or quit."
-// Host quitting still just deletes the room.
 // -----------------------------------------------------------------------------
 export async function markPlayerQuit(
-  roomCode: string,
+  roomCode:   string,
   playerName: string,
-  isHost: boolean
+  isHost:     boolean
 ): Promise<void> {
   if (isHost) {
     await deleteDoc(doc(db, 'rooms', roomCode));

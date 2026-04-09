@@ -1,17 +1,19 @@
 // =============================================================================
-// StartScreen.tsx
+// StartScreen.tsx  (v3.9 -- rejoin support)
 //
 // Entry screen. Name input + mode selection.
 //
-// v3.7 UX improvements:
-//   - Forms used for host/join flows so mobile keyboard Go/Next buttons work
-//   - autoFocus on name field
-//   - Enter/Go on name advances to room code (join) or submits (host)
-//   - 6-box segmented code entry with auto-advance and paste support
+// v3.9 additions:
+//   - rejoinInfo prop: if set, show a "Rejoin Game" banner at the top.
+//     Tapping it calls onRejoinNetwork with the saved name + room code.
+//     No need to re-enter anything.
+//   - disconnectMessage banner now says "You were disconnected from the network game"
+//     and the rejoin banner appears below it.
 // =============================================================================
 
 import React, { useState, useRef, useEffect } from 'react';
 import { COLORS, SPACING } from '../utils/theme';
+import { RejoinInfo } from '../hooks/useGameState';
 
 type StartMode = 'choose' | 'local-setup' | 'host-setup' | 'join';
 
@@ -19,9 +21,11 @@ interface StartScreenProps {
   onStartLocal:      (totalPlayers: number) => void;
   onHostNetwork:     (name: string, totalPlayers: number) => void;
   onJoinNetwork:     (name: string, roomCode: string) => void;
+  onRejoinNetwork:   (name: string, roomCode: string) => void;
   isLoading:         boolean;
   errorMessage:      string | null;
   disconnectMessage: string | null;
+  rejoinInfo:        RejoinInfo | null;
 }
 
 const PLAYER_OPTIONS   = [5, 6, 7, 8, 9, 10];
@@ -34,7 +38,6 @@ function getSavedName(): string {
 function getSavedRemember(): boolean {
   try {
     const stored = localStorage.getItem(PLAYER_NAME_KEY + '_remember');
-    // If never set before, default to true (opt-out rather than opt-in)
     return stored === null ? true : stored === 'true';
   } catch { return true; }
 }
@@ -46,12 +49,15 @@ function saveName(name: string): void {
 function clearSavedName(): void {
   try { localStorage.removeItem(PLAYER_NAME_KEY); } catch {}
 }
-const CODE_LENGTH    = 6;
-// Valid characters for room codes (matches generateRoomCode in gameLogic)
-const VALID_CHARS    = 'ACDEFGHJKMNPQRTUWXZ234679';
+
+const CODE_LENGTH = 6;
+const VALID_CHARS = 'ACDEFGHJKMNPQRTUWXZ234679';
 
 export default function StartScreen(props: StartScreenProps) {
-  const { onStartLocal, onHostNetwork, onJoinNetwork, isLoading, errorMessage, disconnectMessage } = props;
+  const {
+    onStartLocal, onHostNetwork, onJoinNetwork, onRejoinNetwork,
+    isLoading, errorMessage, disconnectMessage, rejoinInfo,
+  } = props;
 
   const [mode,            setMode]           = useState<StartMode>('choose');
   const [playerName,      setPlayerName]      = useState(getSavedName);
@@ -59,17 +65,14 @@ export default function StartScreen(props: StartScreenProps) {
   const [selectedPlayers, setSelectedPlayers] = useState(5);
   const [nameError,       setNameError]       = useState('');
 
-  // 6-box code entry: array of single chars
-  const [codeBoxes,   setCodeBoxes]   = useState<string[]>(Array(CODE_LENGTH).fill(''));
-  const [focusedBox,   setFocusedBox]   = useState<number | null>(null);
+  const [codeBoxes,  setCodeBoxes]  = useState<string[]>(Array(CODE_LENGTH).fill(''));
+  const [focusedBox, setFocusedBox] = useState<number | null>(null);
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
   const nameRef  = useRef<HTMLInputElement>(null);
 
-  // Derived: full room code from boxes
-  const roomCode = codeBoxes.join('');
+  const roomCode     = codeBoxes.join('');
   const codeComplete = roomCode.length === CODE_LENGTH;
 
-  // Focus name field when switching to a mode that needs it
   useEffect(function() {
     if (mode === 'host-setup' || mode === 'join') {
       setTimeout(function() { nameRef.current?.focus(); }, 50);
@@ -86,24 +89,33 @@ export default function StartScreen(props: StartScreenProps) {
     return true;
   }
 
+  function persistName() {
+    if (rememberName) { saveName(playerName.trim()); } else { clearSavedName(); }
+    try { localStorage.setItem(PLAYER_NAME_KEY + '_remember', String(rememberName)); } catch {}
+  }
+
   function handleLocalStart() {
     onStartLocal(selectedPlayers);
   }
 
   function handleHostStart() {
     if (!validateName()) return;
-    if (rememberName) { saveName(playerName.trim()); } else { clearSavedName(); }
-    try { localStorage.setItem(PLAYER_NAME_KEY + '_remember', String(rememberName)); } catch {}
+    persistName();
     onHostNetwork(playerName.trim(), selectedPlayers);
   }
 
   function handleJoinSubmit() {
     if (!validateName()) return;
     if (codeComplete) {
-      if (rememberName) { saveName(playerName.trim()); } else { clearSavedName(); }
-      try { localStorage.setItem(PLAYER_NAME_KEY + '_remember', String(rememberName)); } catch {}
+      persistName();
       onJoinNetwork(playerName.trim(), roomCode);
     }
+  }
+
+  // v3.9: One-tap rejoin -- no validation needed, info is pre-known
+  function handleRejoin() {
+    if (!rejoinInfo) return;
+    onRejoinNetwork(rejoinInfo.playerName, rejoinInfo.roomCode);
   }
 
   function resetJoin() {
@@ -116,19 +128,14 @@ export default function StartScreen(props: StartScreenProps) {
   // 6-box code entry handlers
   // ---------------------------------------------------------------------------
   function handleCodeBoxChange(index: number, value: string) {
-    // Only allow valid code characters
     const filtered = value.toUpperCase().split('').filter(function(c) {
       return VALID_CHARS.includes(c);
     });
     if (filtered.length === 0) return;
-
-    // Take last character typed (handles auto-correct inserting multiple)
-    const char = filtered[filtered.length - 1];
+    const char     = filtered[filtered.length - 1];
     const newBoxes = [...codeBoxes];
     newBoxes[index] = char;
     setCodeBoxes(newBoxes);
-
-    // Auto-advance to next box
     if (index < CODE_LENGTH - 1) {
       codeRefs.current[index + 1]?.focus();
     }
@@ -138,11 +145,9 @@ export default function StartScreen(props: StartScreenProps) {
     if (e.key === 'Backspace') {
       const newBoxes = [...codeBoxes];
       if (codeBoxes[index] !== '') {
-        // Clear current box
         newBoxes[index] = '';
         setCodeBoxes(newBoxes);
       } else if (index > 0) {
-        // Move back and clear previous
         newBoxes[index - 1] = '';
         setCodeBoxes(newBoxes);
         codeRefs.current[index - 1]?.focus();
@@ -164,7 +169,6 @@ export default function StartScreen(props: StartScreenProps) {
     const newBoxes = Array(CODE_LENGTH).fill('');
     pasted.forEach(function(char, i) { newBoxes[i] = char; });
     setCodeBoxes(newBoxes);
-    // Focus last filled box or last box
     const lastIdx = Math.min(pasted.length - 1, CODE_LENGTH - 1);
     codeRefs.current[lastIdx]?.focus();
   }
@@ -218,11 +222,40 @@ export default function StartScreen(props: StartScreenProps) {
       {/* CHOOSE MODE */}
       {mode === 'choose' && (
         <div style={styles.content}>
+
+          {/* Disconnect message */}
           {disconnectMessage && (
             <div style={styles.disconnectBanner}>
               <p style={styles.disconnectText}>⚠️ {disconnectMessage}</p>
             </div>
           )}
+
+          {/* v3.9: Rejoin banner -- shown when kicked for disconnect */}
+          {rejoinInfo && (
+            <div style={styles.rejoinBanner}>
+              <div style={styles.rejoinInfo}>
+                <p style={styles.rejoinTitle}>REJOIN GAME</p>
+                <p style={styles.rejoinDetail}>
+                  Room: <strong style={{ color: COLORS.gold }}>{rejoinInfo.roomCode}</strong>
+                  {' '}·{' '}
+                  Playing as: <strong style={{ color: COLORS.gold }}>{rejoinInfo.playerName}</strong>
+                </p>
+              </div>
+              <button
+                style={{
+                  ...styles.rejoinButton,
+                  ...(isLoading ? styles.buttonDisabled : {}),
+                }}
+                onClick={handleRejoin}
+                disabled={isLoading}
+              >
+                {isLoading ? 'REJOINING...' : '↩ REJOIN'}
+              </button>
+            </div>
+          )}
+
+          {errorMessage && <p style={styles.errorText}>{errorMessage}</p>}
+
           <button style={styles.primaryButton} onClick={function() { setMode('local-setup'); }}>
             LOCAL GAME
           </button>
@@ -250,7 +283,7 @@ export default function StartScreen(props: StartScreenProps) {
         </div>
       )}
 
-      {/* HOST SETUP -- wrapped in form so Go button submits */}
+      {/* HOST SETUP */}
       {mode === 'host-setup' && (
         <form
           style={styles.content}
@@ -277,7 +310,7 @@ export default function StartScreen(props: StartScreenProps) {
         </form>
       )}
 
-      {/* JOIN -- two-step form: name then code */}
+      {/* JOIN */}
       {mode === 'join' && (
         <form
           style={styles.content}
@@ -338,7 +371,7 @@ export default function StartScreen(props: StartScreenProps) {
         </form>
       )}
 
-      <p style={styles.footerText}>© 2013–2026 Ryan Henderson · v3.8</p>
+      <p style={styles.footerText}>© 2013–2026 Ryan Henderson · v3.9</p>
     </div>
   );
 }
@@ -390,7 +423,6 @@ const styles: Record<string, React.CSSProperties> = {
   sectionLabel:   { fontSize: 11, color: COLORS.textMuted, letterSpacing: '3px', textTransform: 'uppercase', margin: 0, textAlign: 'center' },
   textInput:      { width: '100%', padding: `${SPACING.sm}px ${SPACING.md}px`, backgroundColor: 'rgba(22,24,38,0.9)', border: `1px solid ${COLORS.border}`, borderRadius: 12, fontSize: 18, color: COLORS.textPrimary, outline: 'none', boxSizing: 'border-box' },
   inputError:     { borderColor: COLORS.evil },
-  // 6-box code entry
   codeBoxRow:     { display: 'flex', gap: 8, justifyContent: 'center' },
   codeBox:        {
     width: 44, height: 56, borderRadius: 10,
@@ -414,4 +446,47 @@ const styles: Record<string, React.CSSProperties> = {
   checkboxLabel:  { fontSize: 13, color: COLORS.textSecondary, userSelect: 'none' },
   disconnectBanner: { width: '100%', padding: '10px 16px', backgroundColor: 'rgba(42,13,13,0.9)', borderRadius: 12, border: '1px solid #7A2A2A' },
   disconnectText: { fontSize: 13, color: '#EDE8D8', textAlign: 'center', margin: 0, lineHeight: '1.5' },
+  // v3.9: Rejoin banner
+  rejoinBanner: {
+    width:           '100%',
+    padding:         `${SPACING.sm}px ${SPACING.md}px`,
+    backgroundColor: 'rgba(13,33,42,0.95)',
+    borderRadius:    14,
+    border:          `1px solid ${COLORS.gold}`,
+    display:         'flex',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    gap:             SPACING.sm,
+  },
+  rejoinInfo: {
+    display:       'flex',
+    flexDirection: 'column',
+    gap:           2,
+    flex:          1,
+  },
+  rejoinTitle: {
+    fontSize:      11,
+    fontWeight:    '800',
+    color:         COLORS.gold,
+    letterSpacing: '3px',
+    margin:        0,
+  },
+  rejoinDetail: {
+    fontSize:   12,
+    color:      COLORS.textSecondary,
+    margin:     0,
+    lineHeight: '1.4',
+  },
+  rejoinButton: {
+    padding:         `${SPACING.sm}px ${SPACING.md}px`,
+    backgroundColor: COLORS.gold,
+    border:          'none',
+    borderRadius:    10,
+    fontSize:        13,
+    fontWeight:      '800',
+    color:           COLORS.bgDark,
+    letterSpacing:   '1px',
+    cursor:          'pointer',
+    flexShrink:      0,
+  },
 };

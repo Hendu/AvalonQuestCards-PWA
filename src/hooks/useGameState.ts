@@ -1,24 +1,26 @@
 // =============================================================================
-// useGameState.ts
+// useGameState.ts  (v3.9 -- reconnect support)
 //
-// Central state hook. Handles local mode (unchanged from v2) and network mode.
+// Central state hook. Handles local mode (unchanged) and network mode.
 //
-// NETWORK GAME PHASES (v3):
-//   lobby             -> waiting room, host selects characters
-//   role-reveal       -> each player sees their character card
-//   team-propose      -> current leader proposes a team
-//   team-vote         -> all players vote approve/reject
-//   team-vote-results -> reveal who voted what
-//   voting            -> mission players vote success/fail
-//   results           -> quest outcome
-//   assassination     -> assassin picks their Merlin guess
-//   gameover          -> one side won
+// NEW in v3.9:
+//   pendingDisconnect in GameState -- mirrors Firestore field.
+//     Non-null = game is frozen. Host sees wait modal; guests see freeze overlay.
 //
-// KEY CONCEPTS:
-//   - leaderDeviceId: players sorted by joinedAt, index by leaderIndex
-//   - amILeader: my device is the current team proposer
-//   - amIAssassin: my character is 'Assassin' (for assassination phase)
-//   - myCharacter: my assigned CharacterName (from characters[myDeviceId])
+//   Disconnect detection (host) mid-game:
+//     Instead of calling markPlayerDisconnected (which kicks everyone),
+//     calls setPendingDisconnect, which writes pendingDisconnect to Firestore.
+//     The dropped player is booted to the start screen with rejoin info.
+//     The host wait modal has a 30s "Wait Longer" button; "End Game" kicks all.
+//
+//   rejoinNetworkGame() -- called by the booted player from StartScreen.
+//     Calls rejoinRoom() which rewrites their deviceId everywhere in Firestore
+//     and clears pendingDisconnect. All freeze modals disappear.
+//
+//   Self-detection of disconnect:
+//     When applyRoomData sees pendingDisconnect.deviceId === myDeviceId,
+//     this client was the one who dropped. Boot to start screen immediately
+//     with rejoinInfo set so the StartScreen can offer the Rejoin button.
 // =============================================================================
 
 import { useState, useEffect, useRef } from 'react';
@@ -45,9 +47,11 @@ import {
 import {
   Player,
   PlayerVote,
+  PendingDisconnect,
   RoomData,
   createRoom,
   joinRoom,
+  rejoinRoom,
   startGame,
   updateAvailableCharacters,
   confirmRoleReveal,
@@ -66,6 +70,8 @@ import {
   markPlayerDisconnected,
   markPlayerQuit,
   removePlayerFromLobby,
+  setPendingDisconnect,
+  hostGiveUpOnReconnect,
 } from '../utils/firebaseGame';
 
 import { getDeviceId } from '../utils/deviceId';
@@ -74,6 +80,12 @@ import { getDeviceId } from '../utils/deviceId';
 // -----------------------------------------------------------------------------
 // TYPES
 // -----------------------------------------------------------------------------
+
+// Info needed for the StartScreen to offer a "Rejoin Game" button
+export interface RejoinInfo {
+  roomCode:   string;
+  playerName: string;
+}
 
 export interface GameState {
   // Core game data
@@ -101,10 +113,10 @@ export interface GameState {
   disconnectMessage:   string | null;
 
   // v3: Character data
-  myCharacter:         CharacterName | null;   // this device's assigned character
-  characters:          Record<string, CharacterName>;  // full map (all players)
-  availableCharacters: CharacterName[];        // host's optional selection in lobby
-  confirmedRoleReveal: string[];               // deviceIds who've tapped Next
+  myCharacter:         CharacterName | null;
+  characters:          Record<string, CharacterName>;
+  availableCharacters: CharacterName[];
+  confirmedRoleReveal: string[];
 
   // v3: Leader / proposal data
   leaderIndex:         number;
@@ -112,13 +124,17 @@ export interface GameState {
   proposalCount:       number;
   assassinTarget:      string | null;
 
+  // v3.9: Reconnect
+  pendingDisconnect:   PendingDisconnect | null;
+  rejoinInfo:          RejoinInfo | null;   // set when THIS device is booted for disconnect
+
   // Derived convenience flags
   amIOnMission:        boolean;
   haveIVoted:          boolean;
   allVotesIn:          boolean;
-  amILeader:           boolean;    // am I the current team proposer?
-  amIAssassin:         boolean;    // is my character the Assassin?
-  leaderDeviceId:      string;     // deviceId of current leader (for display)
+  amILeader:           boolean;
+  amIAssassin:         boolean;
+  leaderDeviceId:      string;
   allRoleRevealsConfirmed: boolean;
   allProposalVotesIn:  boolean;
   haveICastProposalVote: boolean;
@@ -154,6 +170,8 @@ function getInitialState(deviceId: string): GameState {
     proposalVotes:       {},
     proposalCount:       0,
     assassinTarget:      null,
+    pendingDisconnect:   null,
+    rejoinInfo:          null,
     amIOnMission:        false,
     haveIVoted:          false,
     allVotesIn:          false,
@@ -166,7 +184,6 @@ function getInitialState(deviceId: string): GameState {
   };
 }
 
-// Helper: get players sorted by joinedAt (determines leader rotation order)
 function getSortedPlayers(players: Player[]): Player[] {
   return [...players].sort(function(a, b) { return a.joinedAt - b.joinedAt; });
 }
@@ -184,22 +201,14 @@ export function useGameState() {
 
   // ---------------------------------------------------------------------------
   // WAKE LOCK
-  //
-  // Keeps the screen on during an active game so players don't have to
-  // constantly tap to prevent their phone locking mid-quest.
-  // Requests the lock when the game moves past setup/lobby, releases on reset.
-  // Re-requests when the tab becomes visible again (wake lock auto-releases
-  // when the tab goes to the background).
   // ---------------------------------------------------------------------------
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   async function requestWakeLock(): Promise<void> {
-    if (!('wakeLock' in navigator)) return;  // not supported -- fail silently
+    if (!('wakeLock' in navigator)) return;
     try {
       wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-    } catch (e) {
-      // Permission denied or device doesn't support it -- not a problem
-    }
+    } catch (e) {}
   }
 
   function releaseWakeLock(): void {
@@ -209,7 +218,6 @@ export function useGameState() {
     }
   }
 
-  // Acquire lock when game is active (past lobby), release when back to setup
   useEffect(function() {
     if (state.phase !== 'setup' && state.phase !== 'lobby') {
       requestWakeLock();
@@ -218,7 +226,6 @@ export function useGameState() {
     }
   }, [state.phase]);
 
-  // Re-acquire when tab becomes visible (browser releases it on tab switch)
   useEffect(function() {
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible' && state.phase !== 'setup' && state.phase !== 'lobby') {
@@ -231,12 +238,12 @@ export function useGameState() {
     };
   }, [state.phase]);
 
-  // Cleanup listener on unmount
   useEffect(function() {
     return function() {
       if (unsubscribeRef.current) unsubscribeRef.current();
     };
   }, []);
+
 
   // ---------------------------------------------------------------------------
   // HEARTBEAT
@@ -254,120 +261,136 @@ export function useGameState() {
 
 
   // ---------------------------------------------------------------------------
-  // DISCONNECT DETECTION
+  // DISCONNECT DETECTION (host only)
   //
-  // During lobby: fast 15s timeout, just remove the dropped player from the
-  // list -- don't send everyone home. Host disconnecting still ends the room.
-  // During game: 25s timeout, mark disconnected and send everyone home.
+  // Lobby: fast 8s timeout, silently remove the slot (unchanged).
+  // Mid-game (past lobby): instead of kicking everyone, call setPendingDisconnect.
+  //   This freezes the game and gives the player a chance to rejoin.
+  //   Host disconnect still deletes the room.
+  //
+  // We skip detection entirely when pendingDisconnect is already set --
+  // no need to double-fire, and we don't want to overwrite a pending
+  // disconnect while we're waiting for the player to come back.
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (!state.isHost || state.gameMode !== 'network' || state.phase === 'setup') return;
     const interval = setInterval(function() {
       const s = stateRef.current;
       if (!s.roomCode || s.phase === 'setup' || s.phase === 'gameover') return;
+
+      // Don't stack pending disconnects
+      if (s.pendingDisconnect) return;
+
       const heartbeats = (s as any)._heartbeats as Record<string, number> | undefined;
       if (!heartbeats) return;
-      const now = Date.now();
-      const inLobby    = s.phase === 'lobby';
-      // Tighter timeout in lobby so the slot opens up quickly for someone else
+
+      const now     = Date.now();
+      const inLobby = s.phase === 'lobby';
       const TIMEOUT_MS = inLobby ? 8000 : 25000;
 
       for (const player of s.players) {
         const lastSeen     = heartbeats[player.deviceId] || 0;
-        const hostDeviceId = getSortedPlayers(s.players)[0]?.deviceId;
-        const isPlayerHost = player.deviceId === hostDeviceId;
+        const sortedPlayers = getSortedPlayers(s.players);
+        const hostDeviceId  = sortedPlayers[0]?.deviceId;
+        const isPlayerHost  = player.deviceId === hostDeviceId;
+
         if (now - lastSeen > TIMEOUT_MS) {
           if (inLobby && !isPlayerHost) {
-            // Guest dropped before game started -- quietly remove from list
+            // Lobby drop: silently remove (unchanged behaviour)
             removePlayerFromLobby(s.roomCode!, player);
+          } else if (isPlayerHost) {
+            // Host dropped -- delete the room (unchanged)
+            markPlayerDisconnected(s.roomCode!, player.name, true);
           } else {
-            // Host dropped in lobby, or anyone dropped mid-game -- end room
-            markPlayerDisconnected(s.roomCode!, player.name, isPlayerHost);
+            // Mid-game guest dropped -- freeze and wait for rejoin (v3.9)
+            setPendingDisconnect(s.roomCode!, player);
           }
           break;
         }
       }
-    }, 3000);  // check every 3s -- fast enough for lobby, acceptable for game
+    }, 3000);
     return function() { clearInterval(interval); };
   }, [state.isHost, state.gameMode, state.phase]);
 
 
   // ---------------------------------------------------------------------------
   // AUTO-ADVANCE: role-reveal -> team-propose
-  // When all players have confirmed role reveal, host moves to team-propose.
+  // Skip if game is frozen (pendingDisconnect)
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (
       state.gameMode === 'network' &&
       state.isHost &&
       state.phase === 'role-reveal' &&
-      state.allRoleRevealsConfirmed
+      state.allRoleRevealsConfirmed &&
+      !state.pendingDisconnect   // don't auto-advance while frozen
     ) {
       advanceToTeamPropose(state.roomCode!);
     }
-  }, [state.allRoleRevealsConfirmed, state.phase, state.isHost, state.gameMode]);
+  }, [state.allRoleRevealsConfirmed, state.phase, state.isHost, state.gameMode, state.pendingDisconnect]);
 
 
   // ---------------------------------------------------------------------------
-  // AUTO-RESOLVE: team-vote -> resolve when all proposal votes are in
+  // AUTO-RESOLVE: team-vote -> resolve
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (
       state.gameMode === 'network' &&
       state.isHost &&
       state.phase === 'team-vote' &&
-      state.allProposalVotesIn
+      state.allProposalVotesIn &&
+      !state.pendingDisconnect
     ) {
       const timer = setTimeout(function() {
         const s = stateRef.current;
-        if (!s.allProposalVotesIn || s.phase !== 'team-vote' || !s.isHost) return;
+        if (!s.allProposalVotesIn || s.phase !== 'team-vote' || !s.isHost || s.pendingDisconnect) return;
 
-        const result       = evaluateProposalVotes(s.proposalVotes);
-        const newCount     = s.proposalCount + 1;
-        const evilAutoWin  = !result.approved && newCount >= 5;
+        const result      = evaluateProposalVotes(s.proposalVotes);
+        const newCount    = s.proposalCount + 1;
+        const evilAutoWin = !result.approved && newCount >= 5;
 
-        // Next leader index: always increments regardless of outcome
-        const sorted       = getSortedPlayers(s.players);
+        const sorted        = getSortedPlayers(s.players);
         const nextLeaderIdx = (s.leaderIndex + 1) % sorted.length;
 
         resolveTeamVote(s.roomCode!, result.approved, nextLeaderIdx, newCount, evilAutoWin);
       }, 800);
       return function() { clearTimeout(timer); };
     }
-  }, [state.allProposalVotesIn, state.phase, state.isHost, state.gameMode]);
+  }, [state.allProposalVotesIn, state.phase, state.isHost, state.gameMode, state.pendingDisconnect]);
 
 
   // ---------------------------------------------------------------------------
-  // AUTO-REVEAL: voting -> results when all mission votes are in
+  // AUTO-REVEAL: voting -> results
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (
       state.gameMode === 'network' &&
       state.isHost &&
       state.phase === 'voting' &&
-      state.allVotesIn
+      state.allVotesIn &&
+      !state.pendingDisconnect
     ) {
       const timer = setTimeout(function() {
         const s = stateRef.current;
-        if (!s.allVotesIn || s.phase !== 'voting' || !s.isHost) return;
-        const voteValues   = s.votes.map(function(v) { return v.vote; });
-        const questResult  = evaluateVotes(voteValues, s.totalPlayers, s.currentQuest);
-        const newGoodWins  = s.goodWins + (questResult.missionPassed ? 1 : 0);
-        const newEvilWins  = s.evilWins + (questResult.missionPassed ? 0 : 1);
-        const newOutcomes  = [...s.questOutcomes] as QuestOutcome[];
+        if (!s.allVotesIn || s.phase !== 'voting' || !s.isHost || s.pendingDisconnect) return;
+        const voteValues  = s.votes.map(function(v) { return v.vote; });
+        const questResult = evaluateVotes(voteValues, s.totalPlayers, s.currentQuest);
+        const newGoodWins = s.goodWins + (questResult.missionPassed ? 1 : 0);
+        const newEvilWins = s.evilWins + (questResult.missionPassed ? 0 : 1);
+        const newOutcomes = [...s.questOutcomes] as QuestOutcome[];
         newOutcomes[s.currentQuest - 1] = questResult.missionPassed ? 'good' : 'evil';
-        const winner       = checkForWinner(newGoodWins, newEvilWins);
+        const winner = checkForWinner(newGoodWins, newEvilWins);
         if (s.roomCode) {
           revealResults(s.roomCode, s.votes, questResult, newGoodWins, newEvilWins, newOutcomes, winner);
         }
       }, 800);
       return function() { clearTimeout(timer); };
     }
-  }, [state.allVotesIn, state.phase, state.isHost, state.gameMode]);
+  }, [state.allVotesIn, state.phase, state.isHost, state.gameMode, state.pendingDisconnect]);
 
 
   // ---------------------------------------------------------------------------
-  // LOCAL GAME (unchanged from v2)
+  // LOCAL GAME (unchanged)
   // ---------------------------------------------------------------------------
 
   function startLocalGame(totalPlayers: number): void {
@@ -481,46 +504,40 @@ export function useGameState() {
     }
   }
 
-  // Host updates their character selection in real time as they toggle
   async function hostUpdateCharacters(optionalSelected: CharacterName[]): Promise<void> {
     if (!state.roomCode) return;
     setState(function(prev) { return { ...prev, availableCharacters: optionalSelected }; });
     await updateAvailableCharacters(state.roomCode, optionalSelected);
   }
 
-  // Host hits Start Game: assign characters, move to role-reveal
   async function hostStartGame(): Promise<void> {
     if (!state.roomCode) return;
-
-    // Sort players by joinedAt to get deterministic assignment order
     const sorted     = getSortedPlayers(state.players);
     const deviceIds  = sorted.map(function(p) { return p.deviceId; });
     const fullList   = getFullCharacterList(state.availableCharacters);
     const assignment = assignCharacters(deviceIds, fullList);
-
     await startGame(state.roomCode, assignment, state.availableCharacters);
-    // Firestore listener moves everyone to role-reveal
   }
 
-  // Host or leader submits team proposal
   async function hostSubmitTeamProposal(selectedDeviceIds: string[]): Promise<void> {
     if (!state.roomCode) return;
     await submitTeamProposal(state.roomCode, selectedDeviceIds);
   }
 
-  // Advance from team-vote-results to actual mission voting
   async function hostAdvanceToMissionVoting(): Promise<void> {
     if (!state.roomCode) return;
     await advanceToMissionVoting(state.roomCode);
   }
 
-  // Host advances to next quest after results
   async function advanceNetworkQuest(): Promise<void> {
     if (!state.roomCode) return;
-    // leaderIndex was already incremented by resolveTeamVote when the proposal
-    // was approved. We just pass the current value through so it resets
-    // proposalCount to 0 but keeps the leader rotation where it is.
     await firebaseAdvanceToNextQuest(state.roomCode, state.currentQuest + 1, state.leaderIndex);
+  }
+
+  // Host gives up waiting for the disconnected player -- kicks everyone
+  async function hostEndGameAfterDisconnect(): Promise<void> {
+    if (!state.roomCode || !state.pendingDisconnect) return;
+    await hostGiveUpOnReconnect(state.roomCode, state.pendingDisconnect.name);
   }
 
 
@@ -563,25 +580,76 @@ export function useGameState() {
     }
   }
 
-  // Each player confirms they've seen their role card
+  // ---------------------------------------------------------------------------
+  // rejoinNetworkGame  (v3.9)
+  //
+  // Called from StartScreen when the player taps "Rejoin Game".
+  // Uses the rejoinInfo that was stored when they were booted for disconnect.
+  // ---------------------------------------------------------------------------
+  async function rejoinNetworkGame(playerName: string, roomCode: string): Promise<void> {
+    setState(function(prev) { return { ...prev, isLoading: true, errorMessage: null, rejoinInfo: null }; });
+    const cleanCode = roomCode.toUpperCase().trim();
+    try {
+      const result = await rejoinRoom(cleanCode, myDeviceId, playerName);
+      if (!result.success) {
+        setState(function(prev) {
+          return {
+            ...prev,
+            isLoading:    false,
+            errorMessage: result.error || 'Could not rejoin. The game may have ended.',
+            // Preserve rejoinInfo so they can try again
+            rejoinInfo:   { roomCode: cleanCode, playerName },
+          };
+        });
+        return;
+      }
+
+      // Subscribe to the room -- applyRoomData will set our phase etc.
+      const unsubscribe = subscribeToRoom(
+        cleanCode,
+        function(data) { applyRoomData(data); },
+        function()     { handleRoomGone(); }
+      );
+      unsubscribeRef.current = unsubscribe;
+
+      setState(function(prev) {
+        return {
+          ...prev,
+          gameMode:  'network',
+          roomCode:  cleanCode,
+          isHost:    result.wasHost ?? false,
+          myName:    playerName,
+          isLoading: false,
+          rejoinInfo: null,
+        };
+      });
+    } catch (error) {
+      setState(function(prev) {
+        return {
+          ...prev,
+          isLoading:    false,
+          errorMessage: 'Failed to rejoin. Check your connection.',
+          rejoinInfo:   { roomCode: cleanCode, playerName },
+        };
+      });
+    }
+  }
+
   async function playerConfirmRoleReveal(): Promise<void> {
     if (!state.roomCode) return;
     await confirmRoleReveal(state.roomCode, myDeviceId);
   }
 
-  // Each player casts their approve/reject vote on the proposed team
   async function castTeamProposalVote(approve: boolean): Promise<void> {
     if (!state.roomCode) return;
     await castProposalVote(state.roomCode, myDeviceId, approve);
   }
 
-  // Mission player submits their success/fail vote
   async function castNetworkVote(result: VoteResult): Promise<void> {
     if (!state.roomCode) return;
     await submitVote(state.roomCode, myDeviceId, result);
   }
 
-  // Assassin submits their target
   async function submitAssassination(targetDeviceId: string): Promise<void> {
     if (!state.roomCode) return;
     const winner = resolveAssassination(targetDeviceId, state.characters);
@@ -601,16 +669,11 @@ export function useGameState() {
     releaseWakeLock();
     if (state.gameMode === 'network' && state.roomCode) {
       if (state.isHost) {
-        // Host leaving -- delete the whole room
         deleteRoom(state.roomCode);
       } else if (state.phase === 'lobby') {
-        // Guest leaving lobby -- immediately remove from player list
-        // so the slot opens up right away without waiting for heartbeat timeout
         const myPlayer = state.players.find(function(p) { return p.deviceId === myDeviceId; });
         if (myPlayer) removePlayerFromLobby(state.roomCode, myPlayer);
       }
-      // Mid-game guest leaving: heartbeat timeout handles it
-      // (disconnectedPlayer field notifies everyone)
     }
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
@@ -620,10 +683,6 @@ export function useGameState() {
     setState(getInitialState(myDeviceId));
   }
 
-
-  // Deliberate quit -- fires immediately, bypasses heartbeat timeout.
-  // Writes a clean "X quit the game" message to Firestore so other devices
-  // see a clear quit message rather than a disconnect message.
   async function quitGame(): Promise<void> {
     releaseWakeLock();
     if (state.gameMode === 'network' && state.roomCode) {
@@ -636,19 +695,24 @@ export function useGameState() {
     localVotesRef.current = [];
     setState(getInitialState(myDeviceId));
   }
+
+
+  // ---------------------------------------------------------------------------
+  // applyRoomData
   //
-  // When Firestore sends an update, compute all derived flags and merge
-  // into local state. This keeps all devices in sync.
+  // v3.9 additions:
+  //   - Read pendingDisconnect from Firestore and store in state.
+  //   - If pendingDisconnect.deviceId === myDeviceId, this client was the one
+  //     that dropped. Boot ourselves to the start screen with rejoinInfo set.
   // ---------------------------------------------------------------------------
   function applyRoomData(data: RoomData): void {
+
+    // --- Existing: handle "everyone get out" signal ---
     if (data.disconnectedPlayer) {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      // disconnectedPlayer is either:
-      //   "PlayerName" -- heartbeat timeout, we append " disconnected."
-      //   "PlayerName quit the game" -- deliberate quit, use as-is
       const raw = data.disconnectedPlayer;
       const msg = raw.endsWith(' quit the game') ? raw : `${raw} disconnected.`;
       setState(function() {
@@ -659,9 +723,7 @@ export function useGameState() {
       return;
     }
 
-    // If we're in the lobby and our deviceId is no longer in the players list,
-    // we were silently removed (heartbeat timeout while host was active).
-    // Send ourselves back to the start screen with a message.
+    // --- Existing: removed from lobby ---
     const amIHost = data.hostDeviceId === myDeviceId;
     if (data.phase === 'lobby' && !amIHost) {
       const stillInRoom = data.players.some(function(p) { return p.deviceId === myDeviceId; });
@@ -679,19 +741,41 @@ export function useGameState() {
       }
     }
 
-    // Sort players by joinedAt to determine leader rotation order
+    // --- v3.9: Am I the one who just got marked as disconnected? ---
+    // pendingDisconnect.deviceId matches my current deviceId.
+    // Boot myself to the start screen immediately, preserving rejoinInfo.
+    const pd = data.pendingDisconnect ?? null;
+    if (pd && pd.deviceId === myDeviceId) {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      setState(function(prev) {
+        const fresh         = getInitialState(myDeviceId);
+        // Store rejoin info so the StartScreen can offer the Rejoin button
+        fresh.rejoinInfo    = { roomCode: data.hostDeviceId ? (prev.roomCode ?? '') : '', playerName: prev.myName || pd.name };
+        // Also store the roomCode properly -- pull it from prev since data doesn't have it
+        const roomCode      = prev.roomCode ?? '';
+        fresh.rejoinInfo    = { roomCode, playerName: prev.myName || pd.name };
+        fresh.disconnectMessage = 'You were disconnected from the network game.';
+        return fresh;
+      });
+      return;
+    }
+
+    // --- Normal update ---
     const sortedPlayers  = getSortedPlayers(data.players);
     const safeLeaderIdx  = data.leaderIndex % Math.max(sortedPlayers.length, 1);
     const leaderDeviceId = sortedPlayers[safeLeaderIdx]?.deviceId ?? '';
 
-    const myCharacter    = data.characters[myDeviceId] ?? null;
-    const amILeader      = leaderDeviceId === myDeviceId;
-    const amIAssassin    = myCharacter === 'Assassin';
-    const isHost         = data.hostDeviceId === myDeviceId;
+    const myCharacter = data.characters[myDeviceId] ?? null;
+    const amILeader   = leaderDeviceId === myDeviceId;
+    const amIAssassin = myCharacter === 'Assassin';
+    const isHost      = data.hostDeviceId === myDeviceId;
 
-    const amIOnMission   = data.missionPlayerIds.includes(myDeviceId);
-    const haveIVoted     = data.votes.some(function(v) { return v.deviceId === myDeviceId; });
-    const allVotesIn     = (
+    const amIOnMission = data.missionPlayerIds.includes(myDeviceId);
+    const haveIVoted   = data.votes.some(function(v) { return v.deviceId === myDeviceId; });
+    const allVotesIn   = (
       data.missionPlayerIds.length > 0 &&
       data.votes.length >= data.missionPlayerIds.length
     );
@@ -726,7 +810,6 @@ export function useGameState() {
         amIOnMission:          amIOnMission,
         haveIVoted:            haveIVoted,
         allVotesIn:            allVotesIn,
-        // v3 fields
         myCharacter:           myCharacter,
         characters:            data.characters || {},
         availableCharacters:   data.availableCharacters || [],
@@ -741,7 +824,9 @@ export function useGameState() {
         allRoleRevealsConfirmed: allRoleRevealsConfirmed,
         allProposalVotesIn:    allProposalVotesIn,
         haveICastProposalVote: haveICastProposalVote,
-        // Store heartbeats in hidden field for disconnect checker
+        // v3.9: Carry pendingDisconnect into local state
+        pendingDisconnect:     pd,
+        // Store heartbeats for disconnect checker
         _heartbeats: data.heartbeats || {},
       } as any;
     });
@@ -776,8 +861,10 @@ export function useGameState() {
     hostSubmitTeamProposal,
     hostAdvanceToMissionVoting,
     advanceNetworkQuest,
+    hostEndGameAfterDisconnect,
     // Network -- all players
     joinNetworkGame,
+    rejoinNetworkGame,
     playerConfirmRoleReveal,
     castTeamProposalVote,
     castNetworkVote,
