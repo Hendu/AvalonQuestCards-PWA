@@ -31,8 +31,20 @@ function getSavedName(): string {
   try { return localStorage.getItem(PLAYER_NAME_KEY) || ''; } catch { return ''; }
 }
 
+function getSavedRemember(): boolean {
+  try {
+    const stored = localStorage.getItem(PLAYER_NAME_KEY + '_remember');
+    // If never set before, default to true (opt-out rather than opt-in)
+    return stored === null ? true : stored === 'true';
+  } catch { return true; }
+}
+
 function saveName(name: string): void {
   try { localStorage.setItem(PLAYER_NAME_KEY, name); } catch {}
+}
+
+function clearSavedName(): void {
+  try { localStorage.removeItem(PLAYER_NAME_KEY); } catch {}
 }
 const CODE_LENGTH    = 6;
 // Valid characters for room codes (matches generateRoomCode in gameLogic)
@@ -43,6 +55,7 @@ export default function StartScreen(props: StartScreenProps) {
 
   const [mode,            setMode]           = useState<StartMode>('choose');
   const [playerName,      setPlayerName]      = useState(getSavedName);
+  const [rememberName,    setRememberName]    = useState(getSavedRemember);
   const [selectedPlayers, setSelectedPlayers] = useState(5);
   const [nameError,       setNameError]       = useState('');
 
@@ -79,14 +92,16 @@ export default function StartScreen(props: StartScreenProps) {
 
   function handleHostStart() {
     if (!validateName()) return;
-    saveName(playerName.trim());
+    if (rememberName) { saveName(playerName.trim()); } else { clearSavedName(); }
+    try { localStorage.setItem(PLAYER_NAME_KEY + '_remember', String(rememberName)); } catch {}
     onHostNetwork(playerName.trim(), selectedPlayers);
   }
 
   function handleJoinSubmit() {
     if (!validateName()) return;
     if (codeComplete) {
-      saveName(playerName.trim());
+      if (rememberName) { saveName(playerName.trim()); } else { clearSavedName(); }
+      try { localStorage.setItem(PLAYER_NAME_KEY + '_remember', String(rememberName)); } catch {}
       onJoinNetwork(playerName.trim(), roomCode);
     }
   }
@@ -179,6 +194,15 @@ export default function StartScreen(props: StartScreenProps) {
         }}
       />
       {nameError && <p style={styles.errorText}>{nameError}</p>}
+      <label style={styles.checkboxRow}>
+        <input
+          type="checkbox"
+          checked={rememberName}
+          onChange={function(e) { setRememberName(e.target.checked); }}
+          style={styles.checkbox}
+        />
+        <span style={styles.checkboxLabel}>Remember my name</span>
+      </label>
     </div>
   );
 
@@ -385,6 +409,9 @@ const styles: Record<string, React.CSSProperties> = {
   orText:         { color: COLORS.textMuted, fontSize: 13, margin: 0 },
   errorText:      { color: COLORS.evil, fontSize: 13, textAlign: 'center', margin: 0 },
   footerText:     { fontSize: 13, color: COLORS.textSecondary, letterSpacing: '1px', margin: 0 },
+  checkboxRow:    { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 2 },
+  checkbox:       { width: 16, height: 16, accentColor: COLORS.gold, cursor: 'pointer', flexShrink: 0 },
+  checkboxLabel:  { fontSize: 13, color: COLORS.textSecondary, userSelect: 'none' },
   disconnectBanner: { width: '100%', padding: '10px 16px', backgroundColor: 'rgba(42,13,13,0.9)', borderRadius: 12, border: '1px solid #7A2A2A' },
   disconnectText: { fontSize: 13, color: '#EDE8D8', textAlign: 'center', margin: 0, lineHeight: '1.5' },
 };
