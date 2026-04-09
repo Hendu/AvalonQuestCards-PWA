@@ -659,6 +659,26 @@ export function useGameState() {
       return;
     }
 
+    // If we're in the lobby and our deviceId is no longer in the players list,
+    // we were silently removed (heartbeat timeout while host was active).
+    // Send ourselves back to the start screen with a message.
+    const amIHost = data.hostDeviceId === myDeviceId;
+    if (data.phase === 'lobby' && !amIHost) {
+      const stillInRoom = data.players.some(function(p) { return p.deviceId === myDeviceId; });
+      if (!stillInRoom) {
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+        setState(function() {
+          const fresh = getInitialState(myDeviceId);
+          fresh.disconnectMessage = 'You were removed from the lobby (connection issue).';
+          return fresh;
+        });
+        return;
+      }
+    }
+
     // Sort players by joinedAt to determine leader rotation order
     const sortedPlayers  = getSortedPlayers(data.players);
     const safeLeaderIdx  = data.leaderIndex % Math.max(sortedPlayers.length, 1);
