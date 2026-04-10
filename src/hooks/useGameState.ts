@@ -261,20 +261,21 @@ export function useGameState() {
 
 
   // ---------------------------------------------------------------------------
-  // DISCONNECT DETECTION -- GUEST WATCHES HOST (v3.9 fix)
+  // DISCONNECT DETECTION -- GUEST WATCHES HOST (v3.9)
   //
-  // When the host's device drops, nobody is running the heartbeat checker
-  // (it only runs on the host). The room just sits in Firestore forever and
-  // guests freeze. Fix: each guest independently watches the host's heartbeat.
-  // If the host goes silent for 25s, the guest deletes the room themselves
-  // (first one to fire wins; deleteDoc on an already-deleted room is a no-op).
-  // This triggers handleRoomGone() on all remaining clients via onSnapshot.
+  // When the host's device drops, no one is running the heartbeat checker.
+  // Each guest independently watches the host's heartbeat. If it goes silent
+  // for 25s, the first guest to notice calls setPendingDisconnect, which
+  // freezes the game and shows the wait modal -- giving the host a chance to
+  // rejoin just like any other player.
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (state.isHost || state.gameMode !== 'network' || state.phase === 'setup' || state.phase === 'lobby') return;
     const interval = setInterval(function() {
       const s = stateRef.current;
       if (!s.roomCode || s.phase === 'setup' || s.phase === 'gameover' || s.isHost) return;
+      // Don't stack pending disconnects
+      if (s.pendingDisconnect) return;
       const heartbeats = (s as any)._heartbeats as Record<string, number> | undefined;
       if (!heartbeats) return;
       const sortedPlayers = getSortedPlayers(s.players);
@@ -282,8 +283,8 @@ export function useGameState() {
       if (!hostPlayer) return;
       const lastSeen = heartbeats[hostPlayer.deviceId] || 0;
       if (Date.now() - lastSeen > 25000) {
-        // Host gone -- delete room so handleRoomGone fires on everyone
-        deleteRoom(s.roomCode!);
+        // Host gone -- freeze and wait, same as guest disconnect
+        setPendingDisconnect(s.roomCode!, hostPlayer);
       }
     }, 3000);
     return function() { clearInterval(interval); };
@@ -294,13 +295,8 @@ export function useGameState() {
   // DISCONNECT DETECTION (host only)
   //
   // Lobby: fast 8s timeout, silently remove the slot (unchanged).
-  // Mid-game (past lobby): instead of kicking everyone, call setPendingDisconnect.
-  //   This freezes the game and gives the player a chance to rejoin.
-  //   Host disconnect still deletes the room.
-  //
-  // We skip detection entirely when pendingDisconnect is already set --
-  // no need to double-fire, and we don't want to overwrite a pending
-  // disconnect while we're waiting for the player to come back.
+  // Mid-game: setPendingDisconnect for all players including host detection
+  //   handled above. Host-side checker only fires for guests now.
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (!state.isHost || state.gameMode !== 'network' || state.phase === 'setup') return;
@@ -319,7 +315,7 @@ export function useGameState() {
       const TIMEOUT_MS = inLobby ? 8000 : 25000;
 
       for (const player of s.players) {
-        const lastSeen     = heartbeats[player.deviceId] || 0;
+        const lastSeen      = heartbeats[player.deviceId] || 0;
         const sortedPlayers = getSortedPlayers(s.players);
         const hostDeviceId  = sortedPlayers[0]?.deviceId;
         const isPlayerHost  = player.deviceId === hostDeviceId;
@@ -328,13 +324,11 @@ export function useGameState() {
           if (inLobby && !isPlayerHost) {
             // Lobby drop: silently remove (unchanged behaviour)
             removePlayerFromLobby(s.roomCode!, player);
-          } else if (isPlayerHost) {
-            // Host dropped -- delete the room (unchanged)
-            markPlayerDisconnected(s.roomCode!, player.name, true);
-          } else {
-            // Mid-game guest dropped -- freeze and wait for rejoin (v3.9)
+          } else if (!isPlayerHost) {
+            // Mid-game guest dropped -- freeze and wait for rejoin
             setPendingDisconnect(s.roomCode!, player);
           }
+          // Host drop detected by guests via the effect above
           break;
         }
       }

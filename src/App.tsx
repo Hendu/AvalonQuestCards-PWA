@@ -51,6 +51,13 @@ export default function App() {
 
   const { phase, gameMode, isHost } = state;
 
+  // Derive whether the disconnected player is the host (sorted by joinedAt, index 0)
+  const hostDeviceId = [...state.players].sort((a, b) => a.joinedAt - b.joinedAt)[0]?.deviceId;
+  const disconnectedPlayerIsHost = !!(
+    state.pendingDisconnect &&
+    state.pendingDisconnect.deviceId === hostDeviceId
+  );
+
   // ---------------------------------------------------------------------------
   // Setup screen
   // ---------------------------------------------------------------------------
@@ -114,6 +121,7 @@ export default function App() {
           <DisconnectWaitModal
             pendingDisconnect={state.pendingDisconnect}
             isHost={isHost}
+            disconnectedPlayerIsHost={disconnectedPlayerIsHost}
             onHostEndGame={hostEndGameAfterDisconnect}
             onGuestLeave={quitGame}
           />
@@ -153,6 +161,7 @@ export default function App() {
           <DisconnectWaitModal
             pendingDisconnect={state.pendingDisconnect}
             isHost={isHost}
+            disconnectedPlayerIsHost={disconnectedPlayerIsHost}
             onHostEndGame={hostEndGameAfterDisconnect}
             onGuestLeave={quitGame}
           />
@@ -192,6 +201,7 @@ export default function App() {
           <DisconnectWaitModal
             pendingDisconnect={state.pendingDisconnect}
             isHost={isHost}
+            disconnectedPlayerIsHost={disconnectedPlayerIsHost}
             onHostEndGame={hostEndGameAfterDisconnect}
             onGuestLeave={quitGame}
           />
@@ -223,6 +233,7 @@ export default function App() {
           <DisconnectWaitModal
             pendingDisconnect={state.pendingDisconnect}
             isHost={isHost}
+            disconnectedPlayerIsHost={disconnectedPlayerIsHost}
             onHostEndGame={hostEndGameAfterDisconnect}
             onGuestLeave={quitGame}
           />
@@ -251,6 +262,7 @@ export default function App() {
           <DisconnectWaitModal
             pendingDisconnect={state.pendingDisconnect}
             isHost={isHost}
+            disconnectedPlayerIsHost={disconnectedPlayerIsHost}
             onHostEndGame={hostEndGameAfterDisconnect}
             onGuestLeave={quitGame}
           />
@@ -288,7 +300,8 @@ export default function App() {
         <DisconnectWaitModal
           pendingDisconnect={state.pendingDisconnect}
           isHost={isHost}
-          onHostEndGame={hostEndGameAfterDisconnect}
+          disconnectedPlayerIsHost={disconnectedPlayerIsHost}
+            onHostEndGame={hostEndGameAfterDisconnect}
           onGuestLeave={quitGame}
         />
       )}

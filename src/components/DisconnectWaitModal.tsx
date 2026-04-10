@@ -24,73 +24,72 @@ import { COLORS, SPACING } from '../utils/theme';
 const WAIT_SECONDS = 30;
 
 interface DisconnectWaitModalProps {
-  pendingDisconnect:       PendingDisconnect;
-  isHost:                  boolean;
-  onHostEndGame:           () => void;   // host: give up, kick everyone
-  onGuestLeave:            () => void;   // guest: just leave
+  pendingDisconnect:        PendingDisconnect;
+  isHost:                   boolean;
+  disconnectedPlayerIsHost: boolean;   // true when it's the HOST who dropped
+  onHostEndGame:            () => void;
+  onGuestLeave:             () => void;
 }
 
 export default function DisconnectWaitModal(props: DisconnectWaitModalProps) {
-  const { pendingDisconnect, isHost, onHostEndGame, onGuestLeave } = props;
+  const { pendingDisconnect, isHost, disconnectedPlayerIsHost, onHostEndGame, onGuestLeave } = props;
 
-  // Countdown timer state -- host only. Counts down from WAIT_SECONDS.
-  // "Wait Longer" resets it back to WAIT_SECONDS.
+  // Countdown timer state. Counts down from WAIT_SECONDS.
   const [countdown, setCountdown] = useState(WAIT_SECONDS);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Reset countdown whenever the modal first appears (pendingDisconnect changes)
+  // "Deciders" are whoever is still connected and needs to choose wait/end.
+  // Normal case: host decides (a guest dropped).
+  // Host-dropped case: all guests are deciders (any one of them can end the game).
+  const iAmDecider = isHost || disconnectedPlayerIsHost;
+
   useEffect(function() {
-    if (!isHost) return;
+    if (!iAmDecider) return;
     setCountdown(WAIT_SECONDS);
-
     intervalRef.current = setInterval(function() {
-      setCountdown(function(prev) {
-        if (prev <= 1) {
-          // Timer hit zero -- but we do NOT auto-end. We just stop counting
-          // and wait for the host to actively choose "Wait Longer" or "End Game".
-          // This matches the spec: "wait longer option after 30 seconds".
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCountdown(function(prev) { return prev <= 1 ? 0 : prev - 1; });
     }, 1000);
-
     return function() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isHost, pendingDisconnect.deviceId]);  // re-run if a different player disconnects
+  }, [iAmDecider, pendingDisconnect.deviceId]);
 
   function handleWaitLonger() {
-    // Reset the countdown and keep the interval running
     setCountdown(WAIT_SECONDS);
   }
 
-  const timerExpired = isHost && countdown === 0;
+  const timerExpired = iAmDecider && countdown === 0;
+
+  // Subtitle varies by who dropped and who's reading it
+  function getSubtitle(): string {
+    if (disconnectedPlayerIsHost) {
+      return 'The host disconnected. Waiting for them to reconnect...';
+    }
+    if (isHost) {
+      return 'disconnected. Waiting for them to reconnect...';
+    }
+    return 'disconnected. The host is waiting for them to reconnect.';
+  }
 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
 
-        {/* Icon */}
         <div style={styles.iconWrapper}>
           <span style={styles.icon}>📡</span>
         </div>
 
-        {/* Title */}
         <p style={styles.title}>CONNECTION LOST</p>
 
-        {/* Disconnected player name */}
-        <p style={styles.playerName}>{pendingDisconnect.name}</p>
-        <p style={styles.subtitle}>
-          {isHost
-            ? 'disconnected. Waiting for them to reconnect...'
-            : 'disconnected. The host is waiting for them to reconnect.'}
-        </p>
+        {/* Show player name inline only when it's a guest who dropped */}
+        {!disconnectedPlayerIsHost && (
+          <p style={styles.playerName}>{pendingDisconnect.name}</p>
+        )}
+        <p style={styles.subtitle}>{getSubtitle()}</p>
 
-        {/* HOST: countdown + buttons */}
-        {isHost && (
+        {/* Countdown + Wait Longer / End Game -- shown to all deciders */}
+        {iAmDecider && (
           <>
-            {/* Countdown ring / number */}
             <div style={styles.countdownWrapper}>
               {countdown > 0 ? (
                 <>
@@ -103,12 +102,11 @@ export default function DisconnectWaitModal(props: DisconnectWaitModalProps) {
             </div>
 
             <div style={styles.buttonRow}>
-              {/* "Wait Longer" appears once the timer reaches 0, or always as a secondary option */}
               <button
                 style={{ ...styles.btn, ...styles.btnWait }}
                 onClick={handleWaitLonger}
               >
-                {timerExpired ? '⏱ WAIT LONGER' : '⏱ WAIT LONGER'}
+                ⏱ WAIT LONGER
               </button>
               <button
                 style={{ ...styles.btn, ...styles.btnEnd }}
@@ -124,8 +122,8 @@ export default function DisconnectWaitModal(props: DisconnectWaitModalProps) {
           </>
         )}
 
-        {/* GUEST: just a leave option */}
-        {!isHost && (
+        {/* Non-decider guests just get a Leave option */}
+        {!iAmDecider && (
           <>
             <p style={styles.guestHint}>
               Your game is paused. You'll resume automatically if they reconnect.
