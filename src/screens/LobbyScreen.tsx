@@ -398,6 +398,10 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             )}
           </div>
 
+        </div>
+
+        {/* Fixed bottom bar -- never scrolls away */}
+        <div style={styles.bottomBar}>
           {isHost && (
             <button
               style={{ ...styles.startButton, ...(!canStart ? styles.startButtonDisabled : {}) }}
@@ -407,7 +411,6 @@ export default function LobbyScreen(props: LobbyScreenProps) {
               START GAME →
             </button>
           )}
-
           {!isHost && (
             <p style={{
               ...styles.guestWaiting,
@@ -420,7 +423,6 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                   : '✓ Ready to start!'}
             </p>
           )}
-
         </div>
       </div>
     </div>
@@ -434,7 +436,8 @@ const styles: Record<string, React.CSSProperties> = {
   topBar:           { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px`, borderBottom: '1px solid rgba(42,45,69,0.8)', backgroundColor: 'rgba(13,15,26,0.7)', flexShrink: 0 },
   topBarTitle:      { fontSize: 11, color: COLORS.textMuted, letterSpacing: '3px', fontWeight: '600' },
   iconButton:       { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px' },
-  scrollArea:       { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl },
+  scrollArea:       { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg },
+  bottomBar:        { flexShrink: 0, padding: `${SPACING.md}px ${SPACING.md}px`, borderTop: '1px solid rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.85)' },
   roomCodeBlock:    { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: SPACING.lg, backgroundColor: 'rgba(22,24,38,0.85)', borderRadius: 16, border: `1px solid ${COLORS.border}` },
   roomCodeLabel:    { fontSize: 12, color: COLORS.textSecondary, letterSpacing: '3px', margin: 0 },
   roomCodeRow:      { display: 'flex', alignItems: 'center', gap: 10 },

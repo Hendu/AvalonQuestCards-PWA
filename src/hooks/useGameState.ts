@@ -261,6 +261,36 @@ export function useGameState() {
 
 
   // ---------------------------------------------------------------------------
+  // DISCONNECT DETECTION -- GUEST WATCHES HOST (v3.9 fix)
+  //
+  // When the host's device drops, nobody is running the heartbeat checker
+  // (it only runs on the host). The room just sits in Firestore forever and
+  // guests freeze. Fix: each guest independently watches the host's heartbeat.
+  // If the host goes silent for 25s, the guest deletes the room themselves
+  // (first one to fire wins; deleteDoc on an already-deleted room is a no-op).
+  // This triggers handleRoomGone() on all remaining clients via onSnapshot.
+  // ---------------------------------------------------------------------------
+  useEffect(function() {
+    if (state.isHost || state.gameMode !== 'network' || state.phase === 'setup' || state.phase === 'lobby') return;
+    const interval = setInterval(function() {
+      const s = stateRef.current;
+      if (!s.roomCode || s.phase === 'setup' || s.phase === 'gameover' || s.isHost) return;
+      const heartbeats = (s as any)._heartbeats as Record<string, number> | undefined;
+      if (!heartbeats) return;
+      const sortedPlayers = getSortedPlayers(s.players);
+      const hostPlayer    = sortedPlayers[0];
+      if (!hostPlayer) return;
+      const lastSeen = heartbeats[hostPlayer.deviceId] || 0;
+      if (Date.now() - lastSeen > 25000) {
+        // Host gone -- delete room so handleRoomGone fires on everyone
+        deleteRoom(s.roomCode!);
+      }
+    }, 3000);
+    return function() { clearInterval(interval); };
+  }, [state.isHost, state.gameMode, state.phase]);
+
+
+  // ---------------------------------------------------------------------------
   // DISCONNECT DETECTION (host only)
   //
   // Lobby: fast 8s timeout, silently remove the slot (unchanged).

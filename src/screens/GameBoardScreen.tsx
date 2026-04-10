@@ -261,10 +261,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
 
                   {/* NETWORK MODE -- I AM on the mission and haven't voted */}
                   {gameMode === 'network' && amIOnMission && !haveIVoted && (
-                    <>
-                      <p style={styles.yourTurnText}>🗡️ You are on this mission — vote secretly</p>
-                      <VoteCards onVote={onVote} disabled={false} />
-                    </>
+                    <p style={styles.yourTurnText}>🗡️ You are on this mission — vote secretly</p>
                   )}
 
                   {/* NETWORK MODE -- I AM on the mission and HAVE voted */}
@@ -287,7 +284,6 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                       <p style={styles.voteProgressText}>
                         {votesIn} of {missionSize} votes cast
                       </p>
-                      {/* Show backs for votes in, blanks for remaining */}
                       <VoteResults
                         votes={voteResults}
                         totalSlots={missionSize}
@@ -331,19 +327,47 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     failCount={lastQuestResult.failCount}
                     successCount={lastQuestResult.successCount}
                   />
-
-                  {(gameMode === 'local' || isHost) && (
-                    <button style={styles.primaryButton} onClick={onAdvanceToNextQuest}>
-                      CONTINUE TO QUEST {currentQuest + 1} →
-                    </button>
-                  )}
-
-                  {gameMode === 'network' && !isHost && (
-                    <p style={styles.guestNote}>⏳ Waiting for host to continue...</p>
-                  )}
                 </div>
               )}
 
+            </div>
+
+            {/* Fixed bottom bar */}
+            <div style={styles.bottomBar}>
+              {/* LOCAL: vote cards + reset */}
+              {phase === 'voting' && gameMode === 'local' && (
+                <>
+                  <p style={styles.voteStatus}>
+                    {missionSize - votesIn} vote{(missionSize - votesIn) !== 1 ? 's' : ''} remaining
+                  </p>
+                  <VoteCards onVote={onVote} disabled={votesIn >= missionSize} />
+                  <button
+                    style={{
+                      ...styles.resetButton,
+                      ...(votesIn === 0 ? styles.resetButtonDisabled : styles.resetButtonActive),
+                    }}
+                    onClick={onResetVotes}
+                    disabled={votesIn === 0}
+                  >
+                    <span style={{ color: votesIn === 0 ? COLORS.textMuted : COLORS.gold, fontSize: 11, letterSpacing: '2px' }}>
+                      RESET VOTES
+                    </span>
+                  </button>
+                </>
+              )}
+              {/* NETWORK: vote cards for mission players who haven't voted */}
+              {phase === 'voting' && gameMode === 'network' && amIOnMission && !haveIVoted && (
+                <VoteCards onVote={onVote} disabled={false} />
+              )}
+              {/* RESULTS: continue button */}
+              {phase === 'results' && (gameMode === 'local' || isHost) && (
+                <button style={styles.primaryButton} onClick={onAdvanceToNextQuest}>
+                  CONTINUE TO QUEST {currentQuest + 1} →
+                </button>
+              )}
+              {phase === 'results' && gameMode === 'network' && !isHost && (
+                <p style={styles.guestNote}>⏳ Waiting for host to continue...</p>
+              )}
             </div>
           </div>
         )}
@@ -450,7 +474,16 @@ const styles: Record<string, React.CSSProperties> = {
     display:       'flex',
     flexDirection: 'column',
     gap:           SPACING.lg,
-    paddingBottom: SPACING.xxl,
+  },
+  bottomBar: {
+    flexShrink:      0,
+    padding:         `${SPACING.md}px ${SPACING.md}px`,
+    borderTop:       '1px solid rgba(42,45,69,0.5)',
+    backgroundColor: 'rgba(13,15,26,0.85)',
+    display:         'flex',
+    flexDirection:   'column',
+    alignItems:      'center',
+    gap:             SPACING.md,
   },
   questHeader: {
     display:       'flex',

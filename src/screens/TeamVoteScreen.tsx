@@ -114,39 +114,22 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
 
           <div style={styles.divider} />
 
-          {/* Voting UI */}
+        </div>
+
+        {/* Fixed bottom bar -- vote buttons must always be reachable */}
+        <div style={styles.bottomBar}>
           {!haveICastProposalVote ? (
             <div style={styles.voteSection}>
-              <p style={styles.votePrompt}>
-                Do you approve this team?
-              </p>
+              <p style={styles.votePrompt}>Do you approve this team?</p>
               <p style={styles.voteHint}>Your vote is secret until all votes are in.</p>
-
               <div style={styles.voteButtons}>
-                {/* Approve token */}
-                <button
-                  style={styles.approveButton}
-                  onClick={function() { onVote(true); }}
-                >
+                <button style={styles.approveButton} onClick={function() { onVote(true); }}>
                   <span style={styles.approveLabel}>APPROVE</span>
-                  <img
-                    src="/assets/images/tokens/approve.svg"
-                    style={styles.tokenImage}
-                    alt="Approve"
-                  />
+                  <img src="/assets/images/tokens/approve.svg" style={styles.tokenImage} alt="Approve" />
                 </button>
-
-                {/* Reject token */}
-                <button
-                  style={styles.rejectButton}
-                  onClick={function() { onVote(false); }}
-                >
+                <button style={styles.rejectButton} onClick={function() { onVote(false); }}>
                   <span style={styles.rejectLabel}>REJECT</span>
-                  <img
-                    src="/assets/images/tokens/reject.svg"
-                    style={styles.tokenImage}
-                    alt="Reject"
-                  />
+                  <img src="/assets/images/tokens/reject.svg" style={styles.tokenImage} alt="Reject" />
                 </button>
               </div>
             </div>
@@ -156,7 +139,6 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
               <p style={styles.votedHint}>Waiting for others...</p>
             </div>
           )}
-
         </div>
       </div>
     </div>
@@ -175,7 +157,8 @@ const styles: Record<string, React.CSSProperties> = {
   topBarTitle: { fontSize: 11, color: COLORS.textMuted, letterSpacing: '3px', fontWeight: '600' },
   topBarRight: { display: 'flex', alignItems: 'center', gap: SPACING.sm },
   iconButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px' },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl },
+  scrollArea: { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg },
+  bottomBar: { flexShrink: 0, padding: `${SPACING.md}px ${SPACING.md}px`, borderTop: '1px solid rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.85)' },
   proposalBox: {
     padding: `${SPACING.sm}px ${SPACING.md}px`,
     backgroundColor: 'rgba(22,24,38,0.7)',

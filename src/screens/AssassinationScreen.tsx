@@ -141,17 +141,6 @@ export default function AssassinationScreen(props: AssassinationScreenProps) {
                   );
                 })}
               </div>
-
-              <button
-                style={{
-                  ...styles.confirmButton,
-                  ...(!selectedTargetId ? styles.confirmButtonDisabled : {}),
-                }}
-                onClick={handleConfirm}
-                disabled={!selectedTargetId}
-              >
-                ASSASSINATE →
-              </button>
             </div>
           ) : (
             <div style={styles.waitingSection}>
@@ -164,6 +153,26 @@ export default function AssassinationScreen(props: AssassinationScreenProps) {
             </div>
           )}
 
+        </div>
+
+        {/* Fixed bottom bar */}
+        <div style={styles.bottomBar}>
+          {amIAssassin ? (
+            <button
+              style={{
+                ...styles.confirmButton,
+                ...(!selectedTargetId ? styles.confirmButtonDisabled : {}),
+              }}
+              onClick={handleConfirm}
+              disabled={!selectedTargetId}
+            >
+              ASSASSINATE →
+            </button>
+          ) : (
+            <p style={styles.waitingBottomText}>
+              🗡️ Waiting for <strong style={{ color: COLORS.evil }}>{assassinName}</strong> to strike...
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -182,7 +191,9 @@ const styles: Record<string, React.CSSProperties> = {
   topBarTitle: { fontSize: 11, color: COLORS.evil, letterSpacing: '3px', fontWeight: '600' },
   topBarRight: { display: 'flex', alignItems: 'center', gap: SPACING.sm },
   iconButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px' },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl },
+  scrollArea: { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg },
+  bottomBar: { flexShrink: 0, padding: `${SPACING.md}px ${SPACING.md}px`, borderTop: '1px solid rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.85)' },
+  waitingBottomText: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' as const, margin: 0 },
   dramaticHeader: { textAlign: 'center', display: 'flex', flexDirection: 'column', gap: SPACING.sm },
   dramaticTitle: { fontSize: 22, fontWeight: '800', color: COLORS.good, letterSpacing: '2px', textShadow: '0 2px 12px rgba(0,0,0,0.9)', margin: 0 },
   dramaticSubtitle: { fontSize: 14, color: COLORS.textSecondary, lineHeight: '1.6', margin: 0 },

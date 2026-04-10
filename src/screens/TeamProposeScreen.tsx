@@ -173,17 +173,6 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
                   );
                 })}
               </div>
-
-              <button
-                style={{
-                  ...styles.sendButton,
-                  ...(!canSend ? styles.sendButtonDisabled : {}),
-                }}
-                onClick={handleSend}
-                disabled={!canSend}
-              >
-                PROPOSE THIS TEAM →
-              </button>
             </>
           ) : (
             <div style={styles.guestWaiting}>
@@ -196,6 +185,26 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
             </div>
           )}
 
+        </div>
+
+        {/* Fixed bottom bar */}
+        <div style={styles.bottomBar}>
+          {isLeader ? (
+            <button
+              style={{
+                ...styles.sendButton,
+                ...(!canSend ? styles.sendButtonDisabled : {}),
+              }}
+              onClick={handleSend}
+              disabled={!canSend}
+            >
+              PROPOSE THIS TEAM →
+            </button>
+          ) : (
+            <p style={styles.guestNote}>
+              ⏳ Waiting for <strong style={{ color: COLORS.gold }}>{leaderName}</strong> to propose a team...
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -217,7 +226,9 @@ const styles: Record<string, React.CSSProperties> = {
   topBarTitle: { fontSize: 11, color: COLORS.textMuted, letterSpacing: '3px', fontWeight: '600' },
   topBarRight: { display: 'flex', alignItems: 'center', gap: SPACING.sm },
   iconButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px' },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl },
+  scrollArea: { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg },
+  bottomBar: { flexShrink: 0, padding: `${SPACING.md}px ${SPACING.md}px`, borderTop: '1px solid rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.85)' },
+  guestNote: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', margin: 0 },
   questHeader: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   questLabel: { fontSize: 26, fontWeight: '800', color: COLORS.gold, letterSpacing: '3px', margin: 0 },
   questMeta: { fontSize: 12, color: COLORS.textMuted, letterSpacing: '1px', textTransform: 'uppercase', margin: 0 },

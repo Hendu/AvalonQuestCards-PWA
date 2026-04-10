@@ -103,7 +103,10 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
             </div>
           )}
 
-          {/* Confirm / waiting */}
+        </div>
+
+        {/* Fixed bottom bar */}
+        <div style={styles.bottomBar}>
           {!hasConfirmed ? (
             <button style={styles.confirmButton} onClick={onConfirm}>
               I UNDERSTAND MY ROLE →
@@ -123,7 +126,6 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
               <p style={styles.waitingHint}>Waiting for others to confirm their role...</p>
             </div>
           )}
-
         </div>
       </div>
     </div>
@@ -147,7 +149,11 @@ const styles: Record<string, React.CSSProperties> = {
   headerHint:  { fontSize: 12, color: COLORS.textSecondary, margin: '2px 0 0 0', fontStyle: 'italic' },
   scrollArea: {
     flex: 1, overflowY: 'auto', padding: SPACING.md,
-    display: 'flex', flexDirection: 'column', gap: SPACING.lg, paddingBottom: SPACING.xxl,
+    display: 'flex', flexDirection: 'column', gap: SPACING.lg,
+  },
+  bottomBar: {
+    flexShrink: 0, padding: `${SPACING.md}px ${SPACING.md}px`,
+    borderTop: '1px solid rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.85)',
   },
   // Card fills much more of the screen now -- no text below it to compete
   cardWrapper: {
