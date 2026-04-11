@@ -72,8 +72,32 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
   const isResultPhase = (phase === 'results' || phase === 'gameover');
   const bgImage       = getBackgroundImage(phase, winner);
 
-  // Sound effect on results and gameover
-  const prevPhaseRef = useRef(phase);
+  // Sound effect on results and gameover.
+  //
+  // The results case is straightforward: detect the phase transition.
+  //
+  // The gameover case is trickier in network mode: when assassination resolves,
+  // Firestore jumps phase from 'assassination' -> 'gameover', but GameBoardScreen
+  // is unmounted during 'assassination' and RE-MOUNTED for 'gameover'. So the
+  // component mounts with phase already === 'gameover' -- there's no transition
+  // to detect. We handle this by playing the sound on mount if phase is already
+  // gameover, using a one-shot ref so it only fires once.
+  const prevPhaseRef     = useRef(phase);
+  const gameoverSoundRef = useRef(false);  // true once we've played the gameover sound
+
+  useEffect(function() {
+    // On mount: if we're already at gameover (arrived from assassination screen), play now
+    if (phase === 'gameover' && !gameoverSoundRef.current) {
+      gameoverSoundRef.current = true;
+      if (soundEnabled) {
+        playSound(winner === 'good'
+          ? '/assets/sounds/ff-fanfare.mp3'
+          : '/assets/sounds/tpirhorns.wav'
+        );
+      }
+    }
+  }, []);  // mount only
+
   useEffect(function() {
     if (prevPhaseRef.current === phase) {
       prevPhaseRef.current = phase;
@@ -89,9 +113,10 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
         ? '/assets/sounds/ff-fanfare.mp3'
         : '/assets/sounds/tpirhorns.wav'
       );
-    } else if (phase === 'gameover') {
-      // winner === 'good' means Merlin survived assassination -- fanfare
-      // winner === 'evil' covers: assassination success, 5 rejections, 3 quest fails
+    } else if (phase === 'gameover' && !gameoverSoundRef.current) {
+      // Gameover reached via phase transition within this component
+      // (e.g. local mode, or evil wins 3 quests without assassination)
+      gameoverSoundRef.current = true;
       playSound(winner === 'good'
         ? '/assets/sounds/ff-fanfare.mp3'
         : '/assets/sounds/tpirhorns.wav'

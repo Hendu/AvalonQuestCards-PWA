@@ -40,7 +40,9 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
   const info           = CHARACTERS[myCharacter];
   const hasConfirmed   = confirmedRoleReveal.includes(myDeviceId);
   const confirmedCount = confirmedRoleReveal.length;
-  const vision: CharacterVisionEntry[] = getCharacterVision(myCharacter, myDeviceId, characters);
+  // Sort by deviceId so the list order is stable regardless of Firestore object key iteration order
+  const vision: CharacterVisionEntry[] = getCharacterVision(myCharacter, myDeviceId, characters)
+    .sort(function(a, b) { return a.deviceId.localeCompare(b.deviceId); });
   const imageName = myCharacter.replace(/ /g, '_');
 
   return (
