@@ -72,18 +72,31 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
   const isResultPhase = (phase === 'results' || phase === 'gameover');
   const bgImage       = getBackgroundImage(phase, winner);
 
-  // Sound effect on results
+  // Sound effect on results and gameover
   const prevPhaseRef = useRef(phase);
   useEffect(function() {
-    if (prevPhaseRef.current !== phase && isResultPhase) {
-      if (soundEnabled && lastQuestResult) {
-        playSound(lastQuestResult.missionPassed
-          ? '/assets/sounds/ff-fanfare.mp3'
-          : '/assets/sounds/tpirhorns.wav'
-        );
-      }
+    if (prevPhaseRef.current === phase) {
+      prevPhaseRef.current = phase;
+      return;
     }
     prevPhaseRef.current = phase;
+
+    if (!soundEnabled) return;
+
+    if (phase === 'results' && lastQuestResult) {
+      // Mid-game quest result
+      playSound(lastQuestResult.missionPassed
+        ? '/assets/sounds/ff-fanfare.mp3'
+        : '/assets/sounds/tpirhorns.wav'
+      );
+    } else if (phase === 'gameover') {
+      // winner === 'good' means Merlin survived assassination -- fanfare
+      // winner === 'evil' covers: assassination success, 5 rejections, 3 quest fails
+      playSound(winner === 'good'
+        ? '/assets/sounds/ff-fanfare.mp3'
+        : '/assets/sounds/tpirhorns.wav'
+      );
+    }
   }, [phase]);
 
   const overlayOpacity = isGameOver ? 0 : isResultPhase ? 0.45 : 0.65;
@@ -229,33 +242,17 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     </div>
                   )}
 
-                  {/* LOCAL MODE -- pass the phone, everyone votes here */}
+                  {/* LOCAL MODE -- vote status and progress (cards + reset live in bottomBar) */}
                   {gameMode === 'local' && (
                     <>
                       <p style={styles.voteStatus}>
                         {missionSize - votesIn} vote{(missionSize - votesIn) !== 1 ? 's' : ''} remaining
                       </p>
-                      <VoteCards
-                        onVote={onVote}
-                        disabled={votesIn >= missionSize}
-                      />
                       <VoteResults
                         votes={voteResults}
                         totalSlots={missionSize}
                         isRevealed={false}
                       />
-                      <button
-                        style={{
-                          ...styles.resetButton,
-                          ...(votesIn === 0 ? styles.resetButtonDisabled : styles.resetButtonActive),
-                        }}
-                        onClick={onResetVotes}
-                        disabled={votesIn === 0}
-                      >
-                        <span style={{ color: votesIn === 0 ? COLORS.textMuted : COLORS.gold, fontSize: 11, letterSpacing: '2px' }}>
-                          RESET VOTES
-                        </span>
-                      </button>
                     </>
                   )}
 
