@@ -54,6 +54,7 @@ import {
   startGame,
   updateAvailableCharacters,
   updateLadyOfTheLakeEnabled,
+  updateBotsEnabled,
   confirmRoleReveal,
   advanceToTeamPropose,
   submitTeamProposal,
@@ -73,6 +74,20 @@ import {
   setPendingDisconnect,
   hostGiveUpOnReconnect,
 } from '../utils/firebaseGame';
+
+import {
+  isBotDeviceId,
+  makeBotPlayer,
+  pickBotNames,
+  botThinkDelay,
+  BOT_DELAYS,
+  computeHeatmap,
+  decideBotProposal,
+  decideBotProposalVote,
+  decideBotMissionVote,
+  decideBotLadyTarget,
+  decideBotAssassination,
+} from '../utils/botBrain';
 
 import { getDeviceId } from '../utils/deviceId';
 
@@ -130,12 +145,13 @@ export interface GameState {
 
   // v4: Lady of the Lake
   ladyOfTheLakeEnabled: boolean;
-  ladyDeviceId:         string | null;   // deviceId of the current token holder
-  ladyHistory:          string[];        // public list of all past/current token holders
+  ladyDeviceId:         string | null;
+  ladyHistory:          string[];
   ladyResult:           { targetDeviceId: string; alignment: 'good' | 'evil' } | null;
-  //   ladyResult is private -- only the current token holder reads it.
-  //   It survives a reconnect so the token holder can't re-investigate on return.
-  amILady:              boolean;         // derived: ladyDeviceId === myDeviceId
+  amILady:              boolean;
+
+  // v4.1: Bots
+  botsEnabled:          boolean;
 
   // Derived convenience flags
   amIOnMission:           boolean;
@@ -187,6 +203,8 @@ function getInitialState(deviceId: string): GameState {
     ladyHistory:          [],
     ladyResult:           null,
     amILady:              false,
+    // v4.1 Bots
+    botsEnabled:          false,
     // Derived flags
     amIOnMission:           false,
     haveIVoted:             false,
@@ -314,6 +332,8 @@ export function useGameState() {
       const inLobby    = s.phase === 'lobby';
       const TIMEOUT_MS = inLobby ? 8000 : 25000;
       for (const player of s.players) {
+        // Bots have no heartbeat -- never evict them
+        if (isBotDeviceId(player.deviceId)) continue;
         const lastSeen      = heartbeats[player.deviceId] || 0;
         const sortedPlayers = getSortedPlayers(s.players);
         const hostDeviceId  = sortedPlayers[0]?.deviceId;
@@ -402,6 +422,284 @@ export function useGameState() {
       return function() { clearTimeout(timer); };
     }
   }, [state.allVotesIn, state.phase, state.isHost, state.gameMode, state.pendingDisconnect]);
+
+
+  // ---------------------------------------------------------------------------
+  // BOT ENGINE  (v4.1 — tuned, simulation-validated)
+  //
+  // All bot actions run on the host only. Each useEffect watches for a phase
+  // where a bot needs to act, waits a role-appropriate delay, then fires the
+  // Firestore write on behalf of that bot.
+  //
+  // failedMissionTeamsRef: public history of which players were on failed
+  // missions. Used to build the heatmap that all good bots use to reject
+  // suspicious teams. Resets when resetGame() is called.
+  //
+  // merlinRejectRef: per-bot running reject ratio used by Merlin's blending
+  // logic. Key = botDeviceId, value = { rejects, total }.
+  // ---------------------------------------------------------------------------
+  const failedMissionTeamsRef = useRef<string[][]>([]);
+  const merlinRejectRef       = useRef<Record<string, { rejects: number; total: number }>>({});
+
+  function getHeatmap(): Record<string, number> {
+    return computeHeatmap(failedMissionTeamsRef.current);
+  }
+
+  function getMerlinRejectRatio(botDeviceId: string): number {
+    const r = merlinRejectRef.current[botDeviceId];
+    if (!r || r.total === 0) return 0;
+    return r.rejects / r.total;
+  }
+
+  function trackBotVote(botDeviceId: string, approved: boolean): void {
+    const existing = merlinRejectRef.current[botDeviceId] || { rejects: 0, total: 0 };
+    merlinRejectRef.current[botDeviceId] = {
+      rejects: existing.rejects + (approved ? 0 : 1),
+      total:   existing.total + 1,
+    };
+  }
+
+
+  // BOT: role-reveal — bots auto-confirm after a short staggered delay
+  useEffect(function() {
+    if (
+      !state.isHost ||
+      state.gameMode !== 'network' ||
+      state.phase !== 'role-reveal' ||
+      !state.botsEnabled ||
+      state.pendingDisconnect
+    ) return;
+
+    const botPlayers  = state.players.filter(function(p) { return isBotDeviceId(p.deviceId); });
+    const unconfirmed = botPlayers.filter(function(p) {
+      return !state.confirmedRoleReveal.includes(p.deviceId);
+    });
+    if (unconfirmed.length === 0) return;
+
+    const timers = unconfirmed.map(function(bot, idx) {
+      const delay = botThinkDelay(BOT_DELAYS.roleReveal.min, BOT_DELAYS.roleReveal.max) + idx * 300;
+      return setTimeout(function() {
+        const s = stateRef.current;
+        if (s.phase !== 'role-reveal' || !s.roomCode) return;
+        import('../utils/firebaseGame').then(function(fb) {
+          fb.confirmRoleReveal(s.roomCode!, bot.deviceId);
+        });
+      }, delay);
+    });
+
+    return function() { timers.forEach(clearTimeout); };
+  }, [state.phase, state.botsEnabled, state.isHost, state.confirmedRoleReveal.length]);
+
+
+  // BOT: team-propose — if the current leader is a bot, propose a team
+  useEffect(function() {
+    if (
+      !state.isHost ||
+      state.gameMode !== 'network' ||
+      state.phase !== 'team-propose' ||
+      !state.botsEnabled ||
+      state.pendingDisconnect
+    ) return;
+
+    const sortedPlayers = getSortedPlayers(state.players);
+    const safeIdx       = state.leaderIndex % Math.max(sortedPlayers.length, 1);
+    const leader        = sortedPlayers[safeIdx];
+    if (!leader || !isBotDeviceId(leader.deviceId)) return;
+
+    const missionSize = getMissionSize(state.totalPlayers, state.currentQuest);
+    const leaderChar  = state.characters[leader.deviceId];
+    if (!leaderChar) return;
+
+    const timer = setTimeout(function() {
+      const s = stateRef.current;
+      if (s.phase !== 'team-propose' || !s.roomCode) return;
+      const heatmap  = getHeatmap();
+      const proposal = decideBotProposal(
+        leader.deviceId, leaderChar, s.characters,
+        s.players, heatmap, missionSize
+      );
+      submitTeamProposal(s.roomCode, proposal);
+    }, botThinkDelay(BOT_DELAYS.proposalVote.min, BOT_DELAYS.proposalVote.max));
+
+    return function() { clearTimeout(timer); };
+  }, [state.phase, state.leaderIndex, state.botsEnabled, state.isHost]);
+
+
+  // BOT: team-vote — each bot that hasn't voted casts its vote
+  useEffect(function() {
+    if (
+      !state.isHost ||
+      state.gameMode !== 'network' ||
+      state.phase !== 'team-vote' ||
+      !state.botsEnabled ||
+      state.pendingDisconnect
+    ) return;
+
+    const botPlayers = state.players.filter(function(p) { return isBotDeviceId(p.deviceId); });
+    const unvoted    = botPlayers.filter(function(p) {
+      return !(p.deviceId in state.proposalVotes);
+    });
+    if (unvoted.length === 0) return;
+
+    const timers = unvoted.map(function(bot, idx) {
+      const delay = botThinkDelay(BOT_DELAYS.proposalVote.min, BOT_DELAYS.proposalVote.max) + idx * 400;
+      return setTimeout(function() {
+        const s = stateRef.current;
+        if (s.phase !== 'team-vote' || !s.roomCode) return;
+        if (bot.deviceId in s.proposalVotes) return;
+        const botChar = s.characters[bot.deviceId];
+        if (!botChar) return;
+
+        const heatmap   = getHeatmap();
+        const rejectRatio = getMerlinRejectRatio(bot.deviceId);
+        const approve   = decideBotProposalVote(
+          bot.deviceId, botChar, s.characters,
+          s.missionPlayerIds, heatmap,
+          s.proposalCount + 1,   // proposalCount is 0-indexed before submission
+          rejectRatio
+        );
+
+        // Track Merlin's vote for blending
+        if (botChar === 'Merlin') {
+          trackBotVote(bot.deviceId, approve);
+        }
+
+        castProposalVote(s.roomCode!, bot.deviceId, approve);
+      }, delay);
+    });
+
+    return function() { timers.forEach(clearTimeout); };
+  }, [state.phase, state.botsEnabled, state.isHost,
+      Object.keys(state.proposalVotes).length]);
+
+
+  // BOT: mission voting — each bot on the mission casts their vote
+  useEffect(function() {
+    if (
+      !state.isHost ||
+      state.gameMode !== 'network' ||
+      state.phase !== 'voting' ||
+      !state.botsEnabled ||
+      state.pendingDisconnect
+    ) return;
+
+    const botsOnMission = state.players.filter(function(p) {
+      return isBotDeviceId(p.deviceId) && state.missionPlayerIds.includes(p.deviceId);
+    });
+    const unvoted = botsOnMission.filter(function(p) {
+      return !state.votes.some(function(v) { return v.deviceId === p.deviceId; });
+    });
+    if (unvoted.length === 0) return;
+
+    const timers = unvoted.map(function(bot, idx) {
+      const delay = botThinkDelay(BOT_DELAYS.missionVote.min, BOT_DELAYS.missionVote.max) + idx * 500;
+      return setTimeout(function() {
+        const s = stateRef.current;
+        if (s.phase !== 'voting' || !s.roomCode) return;
+        if (s.votes.some(function(v) { return v.deviceId === bot.deviceId; })) return;
+        const botChar = s.characters[bot.deviceId];
+        if (!botChar) return;
+        const vote = decideBotMissionVote(
+          bot.deviceId, botChar, s.characters,
+          s.evilWins, s.currentQuest, s.missionPlayerIds
+        );
+        submitVote(s.roomCode!, bot.deviceId, vote);
+      }, delay);
+    });
+
+    return function() { timers.forEach(clearTimeout); };
+  }, [state.phase, state.botsEnabled, state.isHost, state.votes.length]);
+
+
+  // BOT: record failed mission teams for the heatmap when results come in
+  useEffect(function() {
+    if (state.phase !== 'results' || !state.lastQuestResult || !state.botsEnabled) return;
+    if (!state.lastQuestResult.missionPassed) {
+      // Record this failed team so heatmap weights these players higher
+      failedMissionTeamsRef.current = [
+        ...failedMissionTeamsRef.current,
+        [...state.missionPlayerIds],
+      ];
+    }
+  }, [state.phase]);
+
+
+  // BOT: lady of the lake — if the token holder is a bot, investigate
+  useEffect(function() {
+    if (
+      !state.isHost ||
+      state.gameMode !== 'network' ||
+      state.phase !== 'lady-of-the-lake' ||
+      !state.botsEnabled ||
+      state.pendingDisconnect
+    ) return;
+
+    if (!state.ladyDeviceId || !isBotDeviceId(state.ladyDeviceId)) return;
+
+    const botId   = state.ladyDeviceId;
+    const botChar = state.characters[botId];
+    if (!botChar) return;
+
+    const timer = setTimeout(function() {
+      const s = stateRef.current;
+      if (s.phase !== 'lady-of-the-lake' || !s.roomCode) return;
+      if (!s.ladyDeviceId || !isBotDeviceId(s.ladyDeviceId)) return;
+
+      const eligibleIds = s.players
+        .map(function(p) { return p.deviceId; })
+        .filter(function(id) {
+          return !s.ladyHistory.includes(id) && id !== s.ladyDeviceId;
+        });
+
+      const heatmap  = getHeatmap();
+      const targetId = decideBotLadyTarget(
+        botId, botChar, s.characters, eligibleIds, heatmap
+      );
+      if (!targetId) return;
+
+      const targetChar = s.characters[targetId];
+      if (!targetChar) return;
+      const alignment = CHARACTERS[targetChar].alignment;
+
+      submitLadyResult(s.roomCode!, botId, targetId, alignment);
+    }, botThinkDelay(BOT_DELAYS.ladyTarget.min, BOT_DELAYS.ladyTarget.max));
+
+    return function() { clearTimeout(timer); };
+  }, [state.phase, state.ladyDeviceId, state.botsEnabled, state.isHost]);
+
+
+  // BOT: assassination — if the Assassin is a bot, fire after a dramatic pause
+  useEffect(function() {
+    if (
+      !state.isHost ||
+      state.gameMode !== 'network' ||
+      state.phase !== 'assassination' ||
+      !state.botsEnabled ||
+      state.pendingDisconnect
+    ) return;
+
+    const assassinBot = state.players.find(function(p) {
+      return isBotDeviceId(p.deviceId) && state.characters[p.deviceId] === 'Assassin';
+    });
+    if (!assassinBot) return;
+
+    const timer = setTimeout(function() {
+      const s = stateRef.current;
+      if (s.phase !== 'assassination' || !s.roomCode) return;
+      const heatmap  = getHeatmap();
+      const targetId = decideBotAssassination(
+        assassinBot.deviceId,
+        s.characters[assassinBot.deviceId],
+        s.characters,
+        s.players,
+        heatmap
+      );
+      const winner = resolveAssassination(targetId, s.characters);
+      submitAssassinationTarget(s.roomCode!, targetId, winner);
+    }, botThinkDelay(BOT_DELAYS.assassination.min, BOT_DELAYS.assassination.max));
+
+    return function() { clearTimeout(timer); };
+  }, [state.phase, state.botsEnabled, state.isHost]);
 
 
   // ---------------------------------------------------------------------------
@@ -529,9 +827,33 @@ export function useGameState() {
   // v4: Toggle the Lady of the Lake mechanic on/off from the lobby (host only)
   async function hostToggleLadyOfTheLake(enabled: boolean): Promise<void> {
     if (!state.roomCode) return;
-    // Optimistic local update so the toggle feels instant
     setState(function(prev) { return { ...prev, ladyOfTheLakeEnabled: enabled }; });
     await updateLadyOfTheLakeEnabled(state.roomCode, enabled);
+  }
+
+  // v4.1: Host enables/disables bots. When enabled, fills all remaining player
+  // slots with bot players immediately. When disabled, removes all bots.
+  async function hostToggleBots(enabled: boolean): Promise<void> {
+    if (!state.roomCode) return;
+    setState(function(prev) { return { ...prev, botsEnabled: enabled }; });
+
+    let botPlayersToAdd: Player[] = [];
+    if (enabled) {
+      const slotsNeeded = state.totalPlayers - state.players.length;
+      if (slotsNeeded > 0) {
+        const usedNames = state.players.map(function(p) { return p.name; });
+        const names     = pickBotNames(slotsNeeded, usedNames);
+        botPlayersToAdd = names.map(function(name) { return makeBotPlayer(name); });
+      }
+    }
+
+    await updateBotsEnabled(
+      state.roomCode,
+      enabled,
+      state.players,
+      state.totalPlayers,
+      botPlayersToAdd
+    );
   }
 
   async function hostStartGame(): Promise<void> {
@@ -731,7 +1053,9 @@ export function useGameState() {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
-    localVotesRef.current = [];
+    localVotesRef.current           = [];
+    failedMissionTeamsRef.current   = [];
+    merlinRejectRef.current         = {};
     setState(getInitialState(myDeviceId));
   }
 
@@ -889,6 +1213,8 @@ export function useGameState() {
         ladyHistory:           data.ladyHistory ?? [],
         ladyResult:            ladyResult,
         amILady:               amILady,
+        // v4.1: Bots
+        botsEnabled:           data.botsEnabled ?? false,
       } as any;
     });
   }
@@ -919,6 +1245,7 @@ export function useGameState() {
     hostNetworkGame,
     hostUpdateCharacters,
     hostToggleLadyOfTheLake,
+    hostToggleBots,
     hostStartGame,
     hostSubmitTeamProposal,
     hostAdvanceToMissionVoting,

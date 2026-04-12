@@ -38,6 +38,9 @@ interface LobbyScreenProps {
   // v4: Lady of the Lake toggle
   ladyOfTheLakeEnabled:  boolean;
   onToggleLadyOfTheLake: (enabled: boolean) => void;
+  // v4.1: Bots toggle
+  botsEnabled:           boolean;
+  onToggleBots:          (enabled: boolean) => void;
 }
 
 const REPEATABLE: CharacterName[]      = ['Loyal Servant of Arthur', 'Minion of Mordred'];
@@ -65,13 +68,14 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     roomCode, isHost, players, totalPlayers, myDeviceId,
     availableCharacters, onUpdateCharacters, onStartGame, onLeave,
     ladyOfTheLakeEnabled, onToggleLadyOfTheLake,
+    botsEnabled, onToggleBots,
   } = props;
 
   // Which character card is currently zoomed (null = none)
-  const [zoomedCard, setZoomedCard] = useState<CharacterName | null>(null);
-  // v4: Lady of the Lake modal (separate from character zoom)
+  const [zoomedCard,    setZoomedCard]    = useState<CharacterName | null>(null);
   const [lotlModalOpen, setLotlModalOpen] = useState(false);
-  const [codeCopied,  setCodeCopied]  = useState(false);
+  const [botModalOpen,  setBotModalOpen]  = useState(false);
+  const [codeCopied,    setCodeCopied]    = useState(false);
 
   const allSelected    = getFullCharacterList(availableCharacters);
   const validation     = validateCharacterSelection(availableCharacters, totalPlayers);
@@ -279,13 +283,112 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Bots modal  (v4.1)
+  // ---------------------------------------------------------------------------
+  function renderBotsModal() {
+    if (!botModalOpen) return null;
+
+    return (
+      <div style={styles.modalOverlay} onClick={function() { setBotModalOpen(false); }}>
+        <div
+          style={{
+            ...styles.modalCard,
+            // Warm amber tint — distinct from LoTL blue and character green/red
+            borderColor:     'rgba(160,120,40,0.6)',
+            backgroundColor: 'rgba(22,16,6,0.97)',
+          }}
+          onClick={function(e) { e.stopPropagation(); }}
+        >
+          {/* Icon in place of artwork */}
+          <div style={styles.botModalIcon}>
+            <span style={styles.botModalEmoji}>🤖</span>
+          </div>
+
+          {/* MECHANIC badge */}
+          <div style={styles.lotlModalMechanicRow}>
+            <span style={{
+              ...styles.lotlModalMechanicBadge,
+              color:           'rgba(200,160,60,0.9)',
+              backgroundColor: 'rgba(50,35,8,0.7)',
+              borderColor:     'rgba(160,120,40,0.4)',
+            }}>⟡ MECHANIC</span>
+          </div>
+
+          {/* Description */}
+          <p style={styles.modalDescription}>
+            Fill empty player slots with AI-controlled bots. Once enabled, the room is
+            locked — no new humans can join. Bots vote, propose teams, and make decisions
+            based on their character role. They're not perfect, but they're trying their best.
+          </p>
+
+          {/* Player count preview */}
+          {isHost && (
+            <div style={styles.botSlotPreview}>
+              <span style={styles.botSlotText}>
+                {botsEnabled
+                  ? `${players.filter(function(p) { return p.isBot; }).length} bot${players.filter(function(p) { return p.isBot; }).length !== 1 ? 's' : ''} filling ${totalPlayers - players.filter(function(p) { return !p.isBot; }).length} slot${totalPlayers - players.filter(function(p) { return !p.isBot; }).length !== 1 ? 's' : ''}`
+                  : `${totalPlayers - players.length} slot${totalPlayers - players.length !== 1 ? 's' : ''} would be filled with bots`}
+              </span>
+            </div>
+          )}
+
+          {/* Toggle — host only */}
+          {isHost ? (
+            <button
+              style={{
+                ...styles.lotlModalToggleRow,
+                ...(botsEnabled ? styles.botModalToggleRowOn : {}),
+              }}
+              onClick={function() { onToggleBots(!botsEnabled); }}
+            >
+              <span style={{
+                ...styles.lotlModalToggleLabel,
+                color: botsEnabled ? COLORS.textPrimary : COLORS.textSecondary,
+              }}>
+                {botsEnabled ? '🤖  Enabled' : 'Disabled'}
+              </span>
+              <div style={{
+                ...styles.togglePill,
+                backgroundColor: botsEnabled ? 'rgba(180,130,40,0.9)' : 'rgba(42,45,69,0.8)',
+              }}>
+                <div style={{
+                  ...styles.toggleThumb,
+                  transform: botsEnabled ? 'translateX(22px)' : 'translateX(0px)',
+                }} />
+              </div>
+            </button>
+          ) : (
+            <div style={styles.lotlModalGuestStatus}>
+              <span style={{
+                color:      botsEnabled ? 'rgba(200,160,60,0.9)' : COLORS.textMuted,
+                fontSize:   13,
+                fontWeight: '600',
+              }}>
+                {botsEnabled ? '🤖  Bots enabled by host' : 'Not enabled by host'}
+              </span>
+            </div>
+          )}
+
+          <button
+            style={{ ...styles.modalBtn, ...styles.modalBtnClose, width: '100%' }}
+            onClick={function() { setBotModalOpen(false); }}
+          >
+            CLOSE
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ ...styles.screen, backgroundImage: 'url(/assets/images/normal_background.png)' }}>
       <div style={styles.overlay} />
 
-      {/* Zoom modals rendered above everything */}
+      {/* All modals rendered above everything */}
       {renderZoomModal()}
       {renderLotlModal()}
+      {renderBotsModal()}
 
       <div style={styles.content}>
 
@@ -496,38 +599,68 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             <p style={styles.sectionLabel}>MECHANICS</p>
             <p style={styles.tapHint}>Tap to learn more</p>
 
-            <button
-              style={{
-                ...styles.lotlCard,
-                ...(ladyOfTheLakeEnabled ? styles.lotlCardEnabled : {}),
-              }}
-              onClick={function() { setLotlModalOpen(true); }}
-            >
-              {/* Artwork frame — same proportions as charCardFrame but wider */}
-              <div style={{
-                ...styles.lotlCardFrame,
-                borderColor: ladyOfTheLakeEnabled ? 'rgba(100,180,220,0.7)' : 'rgba(60,90,110,0.6)',
-              }}>
-                <img
-                  src="/assets/images/lady_of_the_lake.png"
-                  style={styles.lotlCardImage}
-                  alt="Lady of the Lake"
-                />
-              </div>
-              <span style={styles.lotlCardName}>Lady of the Lake</span>
-              {/* "MECHANIC" pill instead of GOOD/EVIL alignment */}
-              <span style={{
-                ...styles.lotlMechanicBadge,
-                color:           ladyOfTheLakeEnabled ? 'rgba(100,200,240,0.95)' : COLORS.textMuted,
-                backgroundColor: ladyOfTheLakeEnabled ? 'rgba(20,60,80,0.7)'    : 'rgba(30,33,54,0.5)',
-                borderColor:     ladyOfTheLakeEnabled ? 'rgba(100,180,220,0.4)' : 'rgba(42,45,69,0.5)',
-              }}>
-                MECHANIC
-              </span>
-              {ladyOfTheLakeEnabled && (
-                <span style={styles.lotlEnabledCheck}>✓</span>
-              )}
-            </button>
+            {/* Cards row — LoTL and Bots side by side */}
+            <div style={styles.mechanicsRow}>
+
+              {/* Lady of the Lake card */}
+              <button
+                style={{
+                  ...styles.lotlCard,
+                  ...(ladyOfTheLakeEnabled ? styles.lotlCardEnabled : {}),
+                }}
+                onClick={function() { setLotlModalOpen(true); }}
+              >
+                <div style={{
+                  ...styles.lotlCardFrame,
+                  borderColor: ladyOfTheLakeEnabled ? 'rgba(100,180,220,0.7)' : 'rgba(60,90,110,0.6)',
+                }}>
+                  <img
+                    src="/assets/images/lady_of_the_lake.png"
+                    style={styles.lotlCardImage}
+                    alt="Lady of the Lake"
+                  />
+                </div>
+                <span style={styles.lotlCardName}>Lady of the Lake</span>
+                <span style={{
+                  ...styles.lotlMechanicBadge,
+                  color:           ladyOfTheLakeEnabled ? 'rgba(100,200,240,0.95)' : COLORS.textMuted,
+                  backgroundColor: ladyOfTheLakeEnabled ? 'rgba(20,60,80,0.7)'    : 'rgba(30,33,54,0.5)',
+                  borderColor:     ladyOfTheLakeEnabled ? 'rgba(100,180,220,0.4)' : 'rgba(42,45,69,0.5)',
+                }}>
+                  MECHANIC
+                </span>
+                {ladyOfTheLakeEnabled && <span style={styles.lotlEnabledCheck}>✓</span>}
+              </button>
+
+              {/* Bots card */}
+              <button
+                style={{
+                  ...styles.lotlCard,
+                  ...(botsEnabled ? styles.botCardEnabled : {}),
+                }}
+                onClick={function() { setBotModalOpen(true); }}
+              >
+                <div style={{
+                  ...styles.botCardIconFrame,
+                  borderColor: botsEnabled ? 'rgba(180,130,40,0.7)' : 'rgba(90,70,20,0.5)',
+                }}>
+                  <span style={styles.botCardEmoji}>🤖</span>
+                </div>
+                <span style={styles.lotlCardName}>Bot Players</span>
+                <span style={{
+                  ...styles.lotlMechanicBadge,
+                  color:           botsEnabled ? 'rgba(220,170,60,0.95)' : COLORS.textMuted,
+                  backgroundColor: botsEnabled ? 'rgba(50,35,8,0.7)'    : 'rgba(30,33,54,0.5)',
+                  borderColor:     botsEnabled ? 'rgba(160,120,40,0.4)' : 'rgba(42,45,69,0.5)',
+                }}>
+                  MECHANIC
+                </span>
+                {botsEnabled && (
+                  <span style={{ ...styles.lotlEnabledCheck, color: 'rgba(220,170,60,0.9)' }}>✓</span>
+                )}
+              </button>
+
+            </div>
           </div>
 
         </div>
@@ -624,6 +757,18 @@ const styles: Record<string, React.CSSProperties> = {
   lotlCardName:         { fontSize: 12, color: COLORS.textPrimary, textAlign: 'center', fontWeight: '600', lineHeight: '1.2' },
   lotlMechanicBadge:    { fontSize: 10, letterSpacing: '1px', fontWeight: '700', border: '1px solid', padding: '1px 5px', borderRadius: 4 },
   lotlEnabledCheck:     { position: 'absolute', top: 4, right: 4, fontSize: 14, color: 'rgba(80,200,240,0.9)' },
+  // Mechanics section row — holds both mechanic cards side by side
+  mechanicsRow:         { display: 'flex', flexWrap: 'wrap' as const, gap: 8 },
+  // Bot card — shares lotlCard base, amber tint
+  botCardEnabled:       { borderColor: 'rgba(180,130,40,0.7)', backgroundColor: 'rgba(30,20,5,0.95)' },
+  botCardIconFrame:     { width: 60, height: 80, borderRadius: 12, flexShrink: 0, border: '1px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(40,28,8,0.6)' },
+  botCardEmoji:         { fontSize: 28 },
+  // Bot modal
+  botModalIcon:         { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(50,35,8,0.6)', border: '1px solid rgba(160,120,40,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  botModalEmoji:        { fontSize: 40 },
+  botModalToggleRowOn:  { borderColor: 'rgba(180,130,40,0.6)', backgroundColor: 'rgba(50,35,8,0.7)' },
+  botSlotPreview:       { width: '100%', padding: `${SPACING.sm}px ${SPACING.md}px`, backgroundColor: 'rgba(40,28,8,0.5)', border: '1px solid rgba(120,90,30,0.4)', borderRadius: 10, textAlign: 'center' as const },
+  botSlotText:          { fontSize: 12, color: 'rgba(200,160,60,0.8)' },
   // Lady of the Lake — modal-specific styles
   lotlModalMechanicRow:   { display: 'flex', justifyContent: 'center' },
   lotlModalMechanicBadge: { fontSize: 11, color: 'rgba(80,170,220,0.8)', letterSpacing: '3px', fontWeight: '700', backgroundColor: 'rgba(20,55,75,0.6)', padding: '3px 12px', borderRadius: 6, border: '1px solid rgba(80,150,190,0.3)' },

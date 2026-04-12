@@ -38,6 +38,7 @@ export default function App() {
     hostNetworkGame,
     hostUpdateCharacters,
     hostToggleLadyOfTheLake,
+    hostToggleBots,
     hostStartGame,
     hostSubmitTeamProposal,
     hostAdvanceToMissionVoting,
@@ -97,6 +98,8 @@ export default function App() {
         onUpdateCharacters={hostUpdateCharacters}
         ladyOfTheLakeEnabled={state.ladyOfTheLakeEnabled}
         onToggleLadyOfTheLake={hostToggleLadyOfTheLake}
+        botsEnabled={state.botsEnabled}
+        onToggleBots={hostToggleBots}
         onStartGame={hostStartGame}
         onLeave={resetGame}
       />

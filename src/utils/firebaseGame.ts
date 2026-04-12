@@ -46,6 +46,7 @@ export interface Player {
   deviceId: string;
   name:     string;
   joinedAt: number;
+  isBot:    boolean;   // v4.1: true for AI-controlled players
 }
 
 export interface PlayerVote {
@@ -96,6 +97,9 @@ export interface RoomData {
   ladyResult:           { targetDeviceId: string; alignment: 'good' | 'evil' } | null;
   //   ladyResult is written immediately after investigation so a reconnect doesn't
   //   let the token holder re-investigate. It's private -- never shown to others.
+
+  // v4.1: Bots
+  botsEnabled:          boolean;
 }
 
 
@@ -114,6 +118,7 @@ export async function createRoom(
     deviceId: hostDeviceId,
     name:     hostName,
     joinedAt: Date.now(),
+    isBot:    false,
   };
 
   const now = Date.now();
@@ -145,6 +150,7 @@ export async function createRoom(
     ladyDeviceId:         null,
     ladyHistory:          [],
     ladyResult:           null,
+    botsEnabled:          false,
   };
 
   await setDoc(roomRef, initialData);
@@ -176,6 +182,11 @@ export async function joinRoom(
     return { success: false, error: 'That room is already full.' };
   }
 
+  // v4.1: If bots are enabled, human slots are locked -- no new humans can join
+  if (data.botsEnabled) {
+    return { success: false, error: 'That room is using bot players and is not accepting new players.' };
+  }
+
   const alreadyIn = data.players.find(function(p) { return p.deviceId === deviceId; });
   if (alreadyIn) {
     return { success: true };
@@ -185,6 +196,7 @@ export async function joinRoom(
     deviceId: deviceId,
     name:     name,
     joinedAt: Date.now(),
+    isBot:    false,
   };
 
   await updateDoc(roomRef, {
@@ -392,8 +404,40 @@ export async function updateLadyOfTheLakeEnabled(
 
 
 // -----------------------------------------------------------------------------
-// startGame
+// updateBotsEnabled  (v4.1)
+//
+// Host toggles bots on/off. When turned on, bot players are written into the
+// players array immediately to fill remaining slots. When turned off, bot
+// players are removed and slots reopen for humans.
 // -----------------------------------------------------------------------------
+export async function updateBotsEnabled(
+  roomCode:    string,
+  enabled:     boolean,
+  currentPlayers: Player[],
+  totalPlayers:   number,
+  botPlayersToAdd: Player[]   // pre-built bot Player objects (from hostToggleBots)
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+
+  if (enabled) {
+    // Add bot players to fill remaining slots
+    const allPlayers = [...currentPlayers, ...botPlayersToAdd];
+    await updateDoc(roomRef, {
+      botsEnabled: true,
+      players:     allPlayers,
+    });
+  } else {
+    // Remove all bot players, reopen slots
+    const humanPlayers = currentPlayers.filter(function(p) { return !p.isBot; });
+    await updateDoc(roomRef, {
+      botsEnabled: false,
+      players:     humanPlayers,
+    });
+  }
+}
+
+
+
 export async function startGame(
   roomCode:       string,
   characters:     Record<string, CharacterName>,
