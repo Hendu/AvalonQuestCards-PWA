@@ -156,11 +156,15 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               ...styles.gameOverTitle,
               color: winner === 'good' ? COLORS.good : COLORS.evil,
             }}>
-              {winner === 'good' ? 'GOOD TRIUMPHS' : 'EVIL PREVAILS'}
+              {winner === 'good'
+                ? (gameMode === 'local' ? 'GOOD PREVAILS... FOR NOW' : 'GOOD TRIUMPHS')
+                : 'EVIL PREVAILS'}
             </h1>
             <p style={styles.gameOverSubtitle}>
               {winner === 'good'
-                ? "Merlin survived the Assassin's blade.\nThe forces of Good prevail!"
+                ? gameMode === 'local'
+                  ? "Good has completed 3 quests!\nBut Merlin must still survive the Assassin's blade.\nDoes the Assassin know who Merlin is?"
+                  : "Merlin survived the Assassin's blade.\nThe forces of Good prevail!"
                 : assassinTarget !== null
                   ? "The Assassin found Merlin.\nEvil wins by assassination."
                   : lastQuestResult === null
@@ -178,7 +182,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
             )}
             {(gameMode === 'local' || isHost) && (
               <button style={styles.primaryButton} onClick={onResetGame}>
-                START NEW GAME
+                {gameMode === 'local' && winner === 'good' ? 'RESOLVE & PLAY AGAIN' : 'START NEW GAME'}
               </button>
             )}
             {gameMode === 'network' && !isHost && (
@@ -267,18 +271,13 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     </div>
                   )}
 
-                  {/* LOCAL MODE -- vote status and progress (cards + reset live in bottomBar) */}
+                  {/* LOCAL MODE -- unrevealed card slots (interactive cards live in bottomBar) */}
                   {gameMode === 'local' && (
-                    <>
-                      <p style={styles.voteStatus}>
-                        {missionSize - votesIn} vote{(missionSize - votesIn) !== 1 ? 's' : ''} remaining
-                      </p>
-                      <VoteResults
-                        votes={voteResults}
-                        totalSlots={missionSize}
-                        isRevealed={false}
-                      />
-                    </>
+                    <VoteResults
+                      votes={voteResults}
+                      totalSlots={missionSize}
+                      isRevealed={false}
+                    />
                   )}
 
                   {/* NETWORK MODE -- I AM on the mission and haven't voted */}
