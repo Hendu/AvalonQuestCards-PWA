@@ -346,18 +346,19 @@ export async function setPendingDisconnect(
 // -----------------------------------------------------------------------------
 // hostGiveUpOnReconnect  (v3.9)
 //
-// Host tapped "End Game" in the wait modal. Clears pendingDisconnect and
-// writes disconnectedPlayer, which triggers the existing kick-everyone path.
+// Host tapped "End Game" in the wait modal.
+// Deletes the room entirely -- this triggers onNotFound() → handleRoomGone()
+// on every subscribed client, which is the cleanest way to kick everyone.
+// Writing disconnectedPlayer was the original approach but proved unreliable
+// because the host's own applyRoomData would unsubscribe before the write
+// fully propagated to all guests. Deletion is atomic and guaranteed.
 // -----------------------------------------------------------------------------
 export async function hostGiveUpOnReconnect(
   roomCode:   string,
   playerName: string
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
-  await updateDoc(roomRef, {
-    pendingDisconnect:  null,
-    disconnectedPlayer: playerName,
-  });
+  await deleteDoc(roomRef);
 }
 
 

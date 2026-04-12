@@ -11,11 +11,6 @@
 //   - Filler cards (Loyal Servant, Minion): +/- counter stays inline;
 //     tapping the card image/name zooms for info only
 //   - Guests see all cards as info-only (no Add/Remove buttons in modal)
-//
-// v4: Lady of the Lake card in MECHANICS section. Tap opens a modal with the
-//     artwork, description, and enable/disable toggle (host only).
-//
-// v4: "Waiting for X more players" moved to the very bottom of the scroll area.
 // =============================================================================
 
 import React, { useState } from 'react';
@@ -205,13 +200,12 @@ export default function LobbyScreen(props: LobbyScreenProps) {
         <div
           style={{
             ...styles.modalCard,
-            // Lake-blue tint — visually distinct from good/evil character modals
             borderColor:     'rgba(80,150,190,0.6)',
             backgroundColor: 'rgba(10,25,38,0.97)',
           }}
           onClick={function(e) { e.stopPropagation(); }}
         >
-          {/* Artwork — same frame width as character cards, slightly shorter height */}
+          {/* Artwork — same frame dimensions as character cards */}
           <div style={{
             ...styles.modalFrame,
             borderColor: 'rgba(80,150,190,0.5)',
@@ -224,7 +218,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             />
           </div>
 
-          {/* ⟡ MECHANIC badge — where GOOD / EVIL would normally appear */}
+          {/* MECHANIC label instead of GOOD / EVIL alignment badge */}
           <div style={styles.lotlModalMechanicRow}>
             <span style={styles.lotlModalMechanicBadge}>⟡ MECHANIC</span>
           </div>
@@ -493,7 +487,8 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           {/* ----------------------------------------------------------------
               v4: LADY OF THE LAKE — tappable card (mechanic, not a character)
               Tap opens a modal with artwork, description, and the toggle.
-              Card is visually distinct: lake-blue tint, "MECHANIC" label.
+              Card is visually distinct from character cards: lake-blue tint,
+              wider aspect, no alignment badge, "MECHANIC" label instead.
           ---------------------------------------------------------------- */}
           <div style={styles.divider} />
 
@@ -508,6 +503,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
               }}
               onClick={function() { setLotlModalOpen(true); }}
             >
+              {/* Artwork frame — same proportions as charCardFrame but wider */}
               <div style={{
                 ...styles.lotlCardFrame,
                 borderColor: ladyOfTheLakeEnabled ? 'rgba(100,180,220,0.7)' : 'rgba(60,90,110,0.6)',
@@ -534,7 +530,11 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             </button>
           </div>
 
-          {/* Waiting / ready status — always at the very bottom of the scroll area */}
+        </div>
+
+        {/* Fixed bottom bar */}
+        <div style={styles.bottomBar}>
+          {/* Waiting / ready status — docked, always visible */}
           <p style={{
             ...styles.waitingMessage,
             color: players.length < totalPlayers
@@ -547,11 +547,6 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                 ? (canStart ? '✓ Ready to start!' : validation.message)
                 : (!canStart ? '⏳ Waiting for host to configure characters...' : '✓ Ready to start!')}
           </p>
-
-        </div>
-
-        {/* Fixed bottom bar */}
-        <div style={styles.bottomBar}>
           {isHost && (
             <button
               style={{ ...styles.startButton, ...(!canStart ? styles.startButtonDisabled : {}) }}
@@ -616,12 +611,12 @@ const styles: Record<string, React.CSSProperties> = {
   counter:          { display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 },
   counterBtn:       { width: 32, height: 32, borderRadius: '50%', border: `1px solid ${COLORS.border}`, backgroundColor: 'rgba(13,15,26,0.8)', color: COLORS.gold, fontSize: 20, fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   counterValue:     { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary, minWidth: 24, textAlign: 'center' },
+  validationMessage:{ fontSize: 13, textAlign: 'center', margin: 0 },
   divider:          { height: 1, backgroundColor: 'rgba(42,45,69,0.5)' },
   startButton:      { width: '100%', padding: `${SPACING.md}px`, backgroundColor: COLORS.gold, border: 'none', borderRadius: 20, fontSize: 15, fontWeight: '800', color: COLORS.bgDark, letterSpacing: '3px', cursor: 'pointer' },
   startButtonDisabled: { opacity: 0.4, cursor: 'default' },
-  // Waiting message — bottom of scroll area, visible to all players
-  waitingMessage:   { fontSize: 13, textAlign: 'center', margin: 0, paddingBottom: SPACING.sm },
-  // Lady of the Lake — tappable card
+  waitingMessage:   { fontSize: 13, textAlign: 'center', margin: 0, marginBottom: SPACING.sm },
+  // Lady of the Lake — tappable card (mechanic card in MECHANICS section)
   lotlCard:             { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: `${SPACING.sm}px 8px`, width: '30%', minWidth: 90, backgroundColor: 'rgba(10,25,38,0.85)', border: '1px solid rgba(60,90,110,0.6)', borderRadius: 12, cursor: 'pointer', position: 'relative', transition: 'all 0.15s ease' },
   lotlCardEnabled:      { borderColor: 'rgba(80,160,210,0.7)', backgroundColor: 'rgba(15,40,60,0.95)' },
   lotlCardFrame:        { width: 60, height: 80, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1px solid' },
@@ -629,17 +624,17 @@ const styles: Record<string, React.CSSProperties> = {
   lotlCardName:         { fontSize: 12, color: COLORS.textPrimary, textAlign: 'center', fontWeight: '600', lineHeight: '1.2' },
   lotlMechanicBadge:    { fontSize: 10, letterSpacing: '1px', fontWeight: '700', border: '1px solid', padding: '1px 5px', borderRadius: 4 },
   lotlEnabledCheck:     { position: 'absolute', top: 4, right: 4, fontSize: 14, color: 'rgba(80,200,240,0.9)' },
-  // Lady of the Lake — modal
+  // Lady of the Lake — modal-specific styles
   lotlModalMechanicRow:   { display: 'flex', justifyContent: 'center' },
   lotlModalMechanicBadge: { fontSize: 11, color: 'rgba(80,170,220,0.8)', letterSpacing: '3px', fontWeight: '700', backgroundColor: 'rgba(20,55,75,0.6)', padding: '3px 12px', borderRadius: 6, border: '1px solid rgba(80,150,190,0.3)' },
   lotlModalToggleRow:     { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: `${SPACING.sm}px ${SPACING.md}px`, backgroundColor: 'rgba(15,35,50,0.9)', border: '1px solid rgba(60,90,110,0.5)', borderRadius: 12, cursor: 'pointer' },
   lotlModalToggleRowOn:   { borderColor: 'rgba(80,160,210,0.6)', backgroundColor: 'rgba(15,50,75,0.7)' },
   lotlModalToggleLabel:   { fontSize: 15, fontWeight: '700' },
   lotlModalGuestStatus:   { width: '100%', padding: `${SPACING.sm}px ${SPACING.md}px`, backgroundColor: 'rgba(15,35,50,0.9)', border: '1px solid rgba(60,90,110,0.4)', borderRadius: 12, textAlign: 'center' },
-  // Shared toggle pill
+  // Shared toggle pill (used by both character modal and LoTL modal)
   togglePill:       { width: 48, height: 26, borderRadius: 13, padding: 3, transition: 'background-color 0.2s ease', flexShrink: 0, position: 'relative' as const },
   toggleThumb:      { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', transition: 'transform 0.2s ease' },
-  // Modal (shared between character zoom and LoTL)
+  // Modal
   modalOverlay:     { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACING.md },
   modalCard:        { width: '100%', maxWidth: 340, borderRadius: 20, border: '1px solid', padding: SPACING.lg, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACING.md },
   modalFrame:       { width: 220, height: 370, borderRadius: 16, overflow: 'hidden', flexShrink: 0, border: '1px solid' },

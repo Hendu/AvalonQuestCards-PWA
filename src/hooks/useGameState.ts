@@ -159,7 +159,7 @@ function getInitialState(deviceId: string): GameState {
     phase:               'setup',
     lastQuestResult:     null,
     winner:              null,
-    soundEnabled:        true,
+    soundEnabled:        false,
     gameMode:            'local',
     roomCode:            null,
     myDeviceId:          deviceId,
@@ -510,6 +510,7 @@ export function useGameState() {
           totalPlayers: totalPlayers,
           phase:        'lobby',
           isLoading:    false,
+          soundEnabled: true,   // host gets sound on by default; guests default to off
         };
       });
     } catch (error) {

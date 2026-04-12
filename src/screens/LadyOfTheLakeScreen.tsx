@@ -27,7 +27,6 @@ import { Player, PendingDisconnect } from '../utils/firebaseGame';
 import { CharacterName, CHARACTERS } from '../utils/gameLogic';
 import { COLORS, SPACING } from '../utils/theme';
 import CharacterBadge      from '../components/CharacterBadge';
-import QuitButton          from '../components/QuitButton';
 import DisconnectWaitModal from '../components/DisconnectWaitModal';
 
 interface LadyOfTheLakeScreenProps {
@@ -105,13 +104,16 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
           {ladyHistory.map(function(deviceId, idx) {
             const name = nameOf(players, deviceId);
             const isMe = deviceId === myDeviceId;
+            // "current holder" is whoever ladyDeviceId points to, not the last
+            // entry in history. History trails behind by one after each handoff.
+            const isCurrent = deviceId === ladyDeviceId;
             return (
               <div key={deviceId} style={styles.historyRow}>
                 <span style={styles.historyIndex}>{idx + 1}</span>
                 <span style={{ ...styles.historyName, ...(isMe ? styles.historyNameMe : {}) }}>
                   {name}{isMe ? ' (you)' : ''}
                 </span>
-                {idx === ladyHistory.length - 1 && (
+                {isCurrent && (
                   <span style={styles.currentBadge}>current holder</span>
                 )}
               </div>
@@ -267,31 +269,23 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
           </div>
 
           <div style={styles.bottomBar}>
-            <div style={styles.bottomRow}>
-              <QuitButton onConfirm={onResetGame} isHost={isHost} />
-              <button
-                style={{
-                  ...styles.primaryBtn,
-                  ...styles.primaryBtnFlex,
-                  ...(!selectedTarget || isSubmitting ? styles.primaryBtnDisabled : {}),
-                }}
-                onClick={function() {
-                  if (!selectedTarget || isSubmitting) return;
-                  // Compute alignment locally from the characters map.
-                  // Show the reveal view immediately -- DO NOT write to Firestore yet.
-                  // The token holder taps Continue to actually submit and advance phase.
-                  const targetChar = characters[selectedTarget];
-                  if (!targetChar) return;
-                  const alignment = CHARACTERS[targetChar].alignment;
-                  setRevealedTarget(selectedTarget);
-                  setRevealedAlignment(alignment);
-                  // Note: isSubmitting stays false until Continue is tapped.
-                }}
-                disabled={!selectedTarget || isSubmitting}
-              >
-                {selectedTarget ? 'INVESTIGATE →' : 'SELECT A PLAYER'}
-              </button>
-            </div>
+            <button
+              style={{
+                ...styles.primaryBtn,
+                ...(!selectedTarget || isSubmitting ? styles.primaryBtnDisabled : {}),
+              }}
+              onClick={function() {
+                if (!selectedTarget || isSubmitting) return;
+                const targetChar = characters[selectedTarget];
+                if (!targetChar) return;
+                const alignment = CHARACTERS[targetChar].alignment;
+                setRevealedTarget(selectedTarget);
+                setRevealedAlignment(alignment);
+              }}
+              disabled={!selectedTarget || isSubmitting}
+            >
+              {selectedTarget ? 'INVESTIGATE →' : 'SELECT A PLAYER'}
+            </button>
           </div>
         </div>
 
@@ -341,7 +335,7 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
         </div>
 
         <div style={styles.bottomBar}>
-          <QuitButton onConfirm={onResetGame} isHost={isHost} />
+          {/* Intentionally empty for spectators — no action available during LoTL */}
         </div>
       </div>
 
