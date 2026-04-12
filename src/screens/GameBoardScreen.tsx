@@ -82,7 +82,10 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
   // component mounts with phase already === 'gameover' -- there's no transition
   // to detect. We handle this by playing the sound on mount if phase is already
   // gameover, using a one-shot ref so it only fires once.
-  const prevPhaseRef     = useRef(phase);
+  // Use a sentinel initial value so the first run of the phase-change effect
+  // always sees a transition (prevPhase !== phase), even when the component
+  // mounts directly into the 'results' phase (which is the normal network path).
+  const prevPhaseRef     = useRef<string>('__init__');
   const gameoverSoundRef = useRef(false);  // true once we've played the gameover sound
 
   useEffect(function() {

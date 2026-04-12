@@ -1,6 +1,6 @@
 {
   "name": "avalon-quest-cards",
-  "version": "2.0.0",
+  "version": "4.0.0",
   "private": true,
   "dependencies": {
     "firebase": "^10.12.0",

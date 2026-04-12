@@ -88,6 +88,14 @@ export interface RoomData {
 
   // v3.9 reconnect
   pendingDisconnect:   PendingDisconnect | null;
+
+  // v4: Lady of the Lake
+  ladyOfTheLakeEnabled: boolean;
+  ladyDeviceId:         string | null;     // current token holder's deviceId
+  ladyHistory:          string[];          // all deviceIds who have held the token (public)
+  ladyResult:           { targetDeviceId: string; alignment: 'good' | 'evil' } | null;
+  //   ladyResult is written immediately after investigation so a reconnect doesn't
+  //   let the token holder re-investigate. It's private -- never shown to others.
 }
 
 
@@ -133,6 +141,10 @@ export async function createRoom(
     proposalCount:       0,
     assassinTarget:      null,
     pendingDisconnect:   null,
+    ladyOfTheLakeEnabled: false,
+    ladyDeviceId:         null,
+    ladyHistory:          [],
+    ladyResult:           null,
   };
 
   await setDoc(roomRef, initialData);
@@ -275,6 +287,20 @@ export async function rejoinRoom(
   // 8. hostDeviceId -- if somehow this was the host
   const newHostDeviceId = data.hostDeviceId === oldDeviceId ? newDeviceId : data.hostDeviceId;
 
+  // 9. v4: ladyDeviceId -- rewrite if token holder disconnected
+  const newLadyDeviceId = (data.ladyDeviceId === oldDeviceId) ? newDeviceId : (data.ladyDeviceId ?? null);
+
+  // 10. v4: ladyHistory[] -- rewrite if old deviceId appears in public history
+  const newLadyHistory = (data.ladyHistory || []).map(function(id) {
+    return id === oldDeviceId ? newDeviceId : id;
+  });
+
+  // 11. v4: ladyResult -- if the disconnected player was being investigated, rewrite targetDeviceId
+  let newLadyResult = data.ladyResult ?? null;
+  if (newLadyResult && newLadyResult.targetDeviceId === oldDeviceId) {
+    newLadyResult = { ...newLadyResult, targetDeviceId: newDeviceId };
+  }
+
   await updateDoc(roomRef, {
     hostDeviceId:        newHostDeviceId,
     players:             newPlayers,
@@ -284,6 +310,9 @@ export async function rejoinRoom(
     proposalVotes:       newProposalVotes,
     missionPlayerIds:    newMissionIds,
     votes:               newVotes,
+    ladyDeviceId:        newLadyDeviceId,
+    ladyHistory:         newLadyHistory,
+    ladyResult:          newLadyResult,
     pendingDisconnect:   null,
   });
 
@@ -347,12 +376,28 @@ export async function updateAvailableCharacters(
 
 
 // -----------------------------------------------------------------------------
+// updateLadyOfTheLakeEnabled
+// -----------------------------------------------------------------------------
+export async function updateLadyOfTheLakeEnabled(
+  roomCode: string,
+  enabled:  boolean
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+  await updateDoc(roomRef, {
+    ladyOfTheLakeEnabled: enabled,
+  });
+}
+
+
+
+// -----------------------------------------------------------------------------
 // startGame
 // -----------------------------------------------------------------------------
 export async function startGame(
   roomCode:       string,
   characters:     Record<string, CharacterName>,
-  availableChars: CharacterName[]
+  availableChars: CharacterName[],
+  initialLadyId:  string | null    // v4: randomly chosen initial token holder (null if LoTL off)
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
   await updateDoc(roomRef, {
@@ -360,6 +405,10 @@ export async function startGame(
     availableCharacters: availableChars,
     leaderIndex:         0,
     proposalCount:       0,
+    // v4: seed initial lady token holder; history starts with just her
+    ladyDeviceId:        initialLadyId,
+    ladyHistory:         initialLadyId ? [initialLadyId] : [],
+    ladyResult:          null,
     phase:               'role-reveal',
   });
 }
@@ -548,13 +597,35 @@ export async function revealResults(
 
 // -----------------------------------------------------------------------------
 // advanceToNextQuest
+//
+// v4: When ladyOfTheLakeEnabled is true and it's not quest 5, route to
+// 'lady-of-the-lake' instead of 'team-propose'. The lady phase itself
+// is responsible for advancing to 'team-propose' via submitLadyResult().
+// ladyDeviceId is NOT changed here -- it carries over from the previous
+// assignment (or game start). The LoTL screen handles the handoff.
 // -----------------------------------------------------------------------------
 export async function advanceToNextQuest(
-  roomCode:        string,
-  nextQuestNumber: number,
-  nextLeaderIndex: number
+  roomCode:             string,
+  nextQuestNumber:      number,
+  nextLeaderIndex:      number,
+  ladyOfTheLakeEnabled: boolean,
+  currentLadyDeviceId:  string | null   // needed to set phase correctly
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
+
+  // Lady of the Lake fires after quests 1-4 only (not after quest 5).
+  // Quest 5 always goes straight to team-propose (or gameover -- caller handles that).
+  const useLady = ladyOfTheLakeEnabled && nextQuestNumber <= 5 && (nextQuestNumber - 1) <= 4;
+  // More precisely: LoTL fires between quest results. nextQuestNumber is the upcoming
+  // quest. If ladyEnabled and the completed quest was NOT quest 4 (last one before 5),
+  // we use LoTL. Actually rule: after quests 1–4 results, before quest 2–5 team-propose.
+  // So: use LoTL when nextQuestNumber is 2, 3, 4, or 5 AND ladyEnabled.
+  // (nextQuestNumber === 5 is fine -- LoTL still fires before quest 5 team-propose)
+  // But after quest 5 the game ends -- advanceToNextQuest is never called for quest 6.
+  const nextPhase: GamePhase = (ladyOfTheLakeEnabled && nextQuestNumber >= 2 && nextQuestNumber <= 5)
+    ? 'lady-of-the-lake'
+    : 'team-propose';
+
   await updateDoc(roomRef, {
     currentQuest:     nextQuestNumber,
     missionPlayerIds: [],
@@ -563,13 +634,70 @@ export async function advanceToNextQuest(
     proposalCount:    0,
     leaderIndex:      nextLeaderIndex,
     lastQuestResult:  null,
-    phase:            'team-propose',
+    ladyResult:       null,   // clear any leftover investigation result
+    phase:            nextPhase,
   });
 }
 
 
 // -----------------------------------------------------------------------------
-// submitAssassinationTarget
+// advanceToLadyOfTheLake
+//
+// Host calls this after quest results when LoTL is enabled.
+// (In practice advanceToNextQuest already sets the phase directly;
+// this function exists as a standalone escape hatch and is not currently
+// called from useGameState -- advanceToNextQuest handles the routing.)
+// -----------------------------------------------------------------------------
+export async function advanceToLadyOfTheLake(
+  roomCode:      string,
+  ladyDeviceId:  string
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+  await updateDoc(roomRef, {
+    ladyDeviceId: ladyDeviceId,
+    ladyResult:   null,
+    phase:        'lady-of-the-lake',
+  });
+}
+
+
+// -----------------------------------------------------------------------------
+// submitLadyResult
+//
+// Called by the token holder's device after they select a target to investigate.
+// Writes the result immediately (so a reconnect shows the already-revealed result
+// rather than allowing a re-investigation), appends current holder to ladyHistory,
+// passes the token to the target, and advances to 'team-propose'.
+//
+// currentLadyDeviceId: the player who currently holds the token (making this call).
+// targetDeviceId:      the player they chose to investigate.
+// alignment:           computed client-side from CHARACTERS[characters[targetDeviceId]].alignment
+// -----------------------------------------------------------------------------
+export async function submitLadyResult(
+  roomCode:            string,
+  currentLadyDeviceId: string,
+  targetDeviceId:      string,
+  alignment:           'good' | 'evil'
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
+
+  // We need to read the current ladyHistory to append to it atomically.
+  // arrayUnion handles deduplication safely.
+  await updateDoc(roomRef, {
+    // Store the result privately -- only the current token holder reads this field.
+    // It's cleared when the phase advances, and on the next advanceToNextQuest.
+    ladyResult:   { targetDeviceId, alignment },
+    // Append the current holder to the public history (the target will be added
+    // when THEY investigate, i.e. when they become the new currentLady)
+    ladyHistory:  arrayUnion(currentLadyDeviceId),
+    // Hand the token to the investigated player
+    ladyDeviceId: targetDeviceId,
+    // Advance the game -- investigation is complete
+    phase:        'team-propose',
+  });
+}
+
+
 // -----------------------------------------------------------------------------
 export async function submitAssassinationTarget(
   roomCode:       string,

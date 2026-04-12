@@ -27,6 +27,7 @@ export type GameMode     = 'local' | 'network';
 // team-vote-results  -- reveal who voted what before proceeding
 // voting             -- approved mission players vote success/fail
 // results            -- quest outcome shown
+// lady-of-the-lake   -- (v4) token holder privately investigates one player's alignment
 // assassination      -- good won 3 quests, assassin picks their Merlin guess
 // gameover           -- game is over
 export type GamePhase =
@@ -38,6 +39,7 @@ export type GamePhase =
   | 'team-vote-results'
   | 'voting'
   | 'results'
+  | 'lady-of-the-lake'
   | 'assassination'
   | 'gameover';
 

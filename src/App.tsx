@@ -1,17 +1,20 @@
 // =============================================================================
-// App.tsx  (v3.9 -- reconnect support)
+// App.tsx  (v4.0 -- Lady of the Lake)
 //
 // Root component. Routes to the correct screen based on game phase.
 //
-// v3.9 additions:
-//   - DisconnectWaitModal rendered at root level when state.pendingDisconnect is set.
-//     It overlays the current screen, freezing all interaction.
-//   - rejoinNetworkGame passed down to StartScreen so the "Rejoin Game" button works.
-//   - hostEndGameAfterDisconnect passed to DisconnectWaitModal.
+// v4.0 additions:
+//   - 'lady-of-the-lake' phase block routes to LadyOfTheLakeScreen.
+//   - hostToggleLadyOfTheLake wired from useGameState into LobbyScreen.
+//   - submitLadyInvestigation wired from useGameState into LadyOfTheLakeScreen.
+//   - All LoTL state fields (ladyOfTheLakeEnabled, ladyDeviceId, ladyHistory,
+//     ladyResult, amILady) forwarded where needed.
+//
+// v3.9 -- reconnect support (DisconnectWaitModal, rejoinNetworkGame)
 // =============================================================================
 
 import React from 'react';
-import { useGameState } from './hooks/useGameState';
+import { useGameState }      from './hooks/useGameState';
 import StartScreen           from './screens/StartScreen';
 import LobbyScreen           from './screens/LobbyScreen';
 import RoleRevealScreen      from './screens/RoleRevealScreen';
@@ -20,6 +23,7 @@ import TeamVoteScreen        from './screens/TeamVoteScreen';
 import TeamVoteResultsScreen from './screens/TeamVoteResultsScreen';
 import GameBoardScreen       from './screens/GameBoardScreen';
 import AssassinationScreen   from './screens/AssassinationScreen';
+import LadyOfTheLakeScreen   from './screens/LadyOfTheLakeScreen';
 import DisconnectWaitModal   from './components/DisconnectWaitModal';
 import { VoteResult }        from './utils/gameLogic';
 import { evaluateProposalVotes } from './utils/gameLogic';
@@ -33,6 +37,7 @@ export default function App() {
     resetLocalVotes,
     hostNetworkGame,
     hostUpdateCharacters,
+    hostToggleLadyOfTheLake,
     hostStartGame,
     hostSubmitTeamProposal,
     hostAdvanceToMissionVoting,
@@ -44,6 +49,7 @@ export default function App() {
     castTeamProposalVote,
     castNetworkVote,
     submitAssassination,
+    submitLadyInvestigation,
     toggleSound,
     resetGame,
     quitGame,
@@ -51,8 +57,8 @@ export default function App() {
 
   const { phase, gameMode, isHost } = state;
 
-  // Derive whether the disconnected player is the host (sorted by joinedAt, index 0)
-  const hostDeviceId = [...state.players].sort((a, b) => a.joinedAt - b.joinedAt)[0]?.deviceId;
+  // Derive whether the disconnected player is the host (index 0 by joinedAt)
+  const hostDeviceId = [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[0]?.deviceId;
   const disconnectedPlayerIsHost = !!(
     state.pendingDisconnect &&
     state.pendingDisconnect.deviceId === hostDeviceId
@@ -89,6 +95,8 @@ export default function App() {
         myDeviceId={state.myDeviceId}
         availableCharacters={state.availableCharacters}
         onUpdateCharacters={hostUpdateCharacters}
+        ladyOfTheLakeEnabled={state.ladyOfTheLakeEnabled}
+        onToggleLadyOfTheLake={hostToggleLadyOfTheLake}
         onStartGame={hostStartGame}
         onLeave={resetGame}
       />
@@ -243,6 +251,32 @@ export default function App() {
   }
 
   // ---------------------------------------------------------------------------
+  // v4: Lady of the Lake
+  // ---------------------------------------------------------------------------
+  if (phase === 'lady-of-the-lake') {
+    return (
+      <LadyOfTheLakeScreen
+        players={state.players}
+        myDeviceId={state.myDeviceId}
+        myCharacter={state.myCharacter}
+        myName={state.myName}
+        amILady={state.amILady}
+        ladyDeviceId={state.ladyDeviceId}
+        ladyHistory={state.ladyHistory}
+        ladyResult={state.ladyResult}
+        characters={state.characters}
+        onSubmitInvestigation={submitLadyInvestigation}
+        onResetGame={quitGame}
+        pendingDisconnect={state.pendingDisconnect}
+        isHost={isHost}
+        disconnectedPlayerIsHost={disconnectedPlayerIsHost}
+        onHostEndGame={hostEndGameAfterDisconnect}
+        onGuestLeave={quitGame}
+      />
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Assassination
   // ---------------------------------------------------------------------------
   if (phase === 'assassination') {
@@ -301,7 +335,7 @@ export default function App() {
           pendingDisconnect={state.pendingDisconnect}
           isHost={isHost}
           disconnectedPlayerIsHost={disconnectedPlayerIsHost}
-            onHostEndGame={hostEndGameAfterDisconnect}
+          onHostEndGame={hostEndGameAfterDisconnect}
           onGuestLeave={quitGame}
         />
       )}

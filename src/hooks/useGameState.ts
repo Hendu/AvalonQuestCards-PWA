@@ -1,26 +1,24 @@
 // =============================================================================
-// useGameState.ts  (v3.9 -- reconnect support)
+// useGameState.ts  (v4.0 -- Lady of the Lake)
 //
 // Central state hook. Handles local mode (unchanged) and network mode.
 //
-// NEW in v3.9:
-//   pendingDisconnect in GameState -- mirrors Firestore field.
-//     Non-null = game is frozen. Host sees wait modal; guests see freeze overlay.
+// NEW in v4.0:
+//   Lady of the Lake (LoTL) mechanic:
+//     - Host can toggle ladyOfTheLakeEnabled in the lobby.
+//     - On game start, a random initial token holder is chosen and written to
+//       Firestore alongside the character assignment.
+//     - After quests 1–4, advanceToNextQuest routes to 'lady-of-the-lake' when
+//       LoTL is enabled instead of going straight to 'team-propose'.
+//     - The token holder's device calls submitLadyInvestigation(targetDeviceId),
+//       which computes alignment client-side, writes the result to Firestore,
+//       passes the token, and advances to 'team-propose'. No host auto-advance
+//       is needed -- same pattern as playerConfirmRoleReveal.
+//     - New GameState fields: ladyOfTheLakeEnabled, ladyDeviceId, ladyHistory,
+//       ladyResult, amILady.
 //
-//   Disconnect detection (host) mid-game:
-//     Instead of calling markPlayerDisconnected (which kicks everyone),
-//     calls setPendingDisconnect, which writes pendingDisconnect to Firestore.
-//     The dropped player is booted to the start screen with rejoin info.
-//     The host wait modal has a 30s "Wait Longer" button; "End Game" kicks all.
-//
-//   rejoinNetworkGame() -- called by the booted player from StartScreen.
-//     Calls rejoinRoom() which rewrites their deviceId everywhere in Firestore
-//     and clears pendingDisconnect. All freeze modals disappear.
-//
-//   Self-detection of disconnect:
-//     When applyRoomData sees pendingDisconnect.deviceId === myDeviceId,
-//     this client was the one who dropped. Boot to start screen immediately
-//     with rejoinInfo set so the StartScreen can offer the Rejoin button.
+// Previous versions:
+//   v3.9 -- reconnect support (pendingDisconnect, rejoinNetworkGame)
 // =============================================================================
 
 import { useState, useEffect, useRef } from 'react';
@@ -42,6 +40,7 @@ import {
   assignCharacters,
   getFullCharacterList,
   resolveAssassination,
+  CHARACTERS,
 } from '../utils/gameLogic';
 
 import {
@@ -54,6 +53,7 @@ import {
   rejoinRoom,
   startGame,
   updateAvailableCharacters,
+  updateLadyOfTheLakeEnabled,
   confirmRoleReveal,
   advanceToTeamPropose,
   submitTeamProposal,
@@ -63,11 +63,11 @@ import {
   submitVote,
   revealResults,
   advanceToNextQuest as firebaseAdvanceToNextQuest,
+  submitLadyResult,
   submitAssassinationTarget,
   deleteRoom,
   subscribeToRoom,
   sendHeartbeat,
-  markPlayerDisconnected,
   markPlayerQuit,
   removePlayerFromLobby,
   setPendingDisconnect,
@@ -128,16 +128,25 @@ export interface GameState {
   pendingDisconnect:   PendingDisconnect | null;
   rejoinInfo:          RejoinInfo | null;   // set when THIS device is booted for disconnect
 
+  // v4: Lady of the Lake
+  ladyOfTheLakeEnabled: boolean;
+  ladyDeviceId:         string | null;   // deviceId of the current token holder
+  ladyHistory:          string[];        // public list of all past/current token holders
+  ladyResult:           { targetDeviceId: string; alignment: 'good' | 'evil' } | null;
+  //   ladyResult is private -- only the current token holder reads it.
+  //   It survives a reconnect so the token holder can't re-investigate on return.
+  amILady:              boolean;         // derived: ladyDeviceId === myDeviceId
+
   // Derived convenience flags
-  amIOnMission:        boolean;
-  haveIVoted:          boolean;
-  allVotesIn:          boolean;
-  amILeader:           boolean;
-  amIAssassin:         boolean;
-  leaderDeviceId:      string;
+  amIOnMission:           boolean;
+  haveIVoted:             boolean;
+  allVotesIn:             boolean;
+  amILeader:              boolean;
+  amIAssassin:            boolean;
+  leaderDeviceId:         string;
   allRoleRevealsConfirmed: boolean;
-  allProposalVotesIn:  boolean;
-  haveICastProposalVote: boolean;
+  allProposalVotesIn:     boolean;
+  haveICastProposalVote:  boolean;
 }
 
 function getInitialState(deviceId: string): GameState {
@@ -172,15 +181,22 @@ function getInitialState(deviceId: string): GameState {
     assassinTarget:      null,
     pendingDisconnect:   null,
     rejoinInfo:          null,
-    amIOnMission:        false,
-    haveIVoted:          false,
-    allVotesIn:          false,
-    amILeader:           false,
-    amIAssassin:         false,
-    leaderDeviceId:      '',
+    // v4 LoTL
+    ladyOfTheLakeEnabled: false,
+    ladyDeviceId:         null,
+    ladyHistory:          [],
+    ladyResult:           null,
+    amILady:              false,
+    // Derived flags
+    amIOnMission:           false,
+    haveIVoted:             false,
+    allVotesIn:             false,
+    amILeader:              false,
+    amIAssassin:            false,
+    leaderDeviceId:         '',
     allRoleRevealsConfirmed: false,
-    allProposalVotesIn:  false,
-    haveICastProposalVote: false,
+    allProposalVotesIn:     false,
+    haveICastProposalVote:  false,
   };
 }
 
@@ -262,19 +278,12 @@ export function useGameState() {
 
   // ---------------------------------------------------------------------------
   // DISCONNECT DETECTION -- GUEST WATCHES HOST (v3.9)
-  //
-  // When the host's device drops, no one is running the heartbeat checker.
-  // Each guest independently watches the host's heartbeat. If it goes silent
-  // for 25s, the first guest to notice calls setPendingDisconnect, which
-  // freezes the game and shows the wait modal -- giving the host a chance to
-  // rejoin just like any other player.
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (state.isHost || state.gameMode !== 'network' || state.phase === 'setup' || state.phase === 'lobby') return;
     const interval = setInterval(function() {
       const s = stateRef.current;
       if (!s.roomCode || s.phase === 'setup' || s.phase === 'gameover' || s.isHost) return;
-      // Don't stack pending disconnects
       if (s.pendingDisconnect) return;
       const heartbeats = (s as any)._heartbeats as Record<string, number> | undefined;
       if (!heartbeats) return;
@@ -283,7 +292,6 @@ export function useGameState() {
       if (!hostPlayer) return;
       const lastSeen = heartbeats[hostPlayer.deviceId] || 0;
       if (Date.now() - lastSeen > 25000) {
-        // Host gone -- freeze and wait, same as guest disconnect
         setPendingDisconnect(s.roomCode!, hostPlayer);
       }
     }, 3000);
@@ -293,42 +301,29 @@ export function useGameState() {
 
   // ---------------------------------------------------------------------------
   // DISCONNECT DETECTION (host only)
-  //
-  // Lobby: fast 8s timeout, silently remove the slot (unchanged).
-  // Mid-game: setPendingDisconnect for all players including host detection
-  //   handled above. Host-side checker only fires for guests now.
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (!state.isHost || state.gameMode !== 'network' || state.phase === 'setup') return;
     const interval = setInterval(function() {
       const s = stateRef.current;
       if (!s.roomCode || s.phase === 'setup' || s.phase === 'gameover') return;
-
-      // Don't stack pending disconnects
       if (s.pendingDisconnect) return;
-
       const heartbeats = (s as any)._heartbeats as Record<string, number> | undefined;
       if (!heartbeats) return;
-
-      const now     = Date.now();
-      const inLobby = s.phase === 'lobby';
+      const now        = Date.now();
+      const inLobby    = s.phase === 'lobby';
       const TIMEOUT_MS = inLobby ? 8000 : 25000;
-
       for (const player of s.players) {
         const lastSeen      = heartbeats[player.deviceId] || 0;
         const sortedPlayers = getSortedPlayers(s.players);
         const hostDeviceId  = sortedPlayers[0]?.deviceId;
         const isPlayerHost  = player.deviceId === hostDeviceId;
-
         if (now - lastSeen > TIMEOUT_MS) {
           if (inLobby && !isPlayerHost) {
-            // Lobby drop: silently remove (unchanged behaviour)
             removePlayerFromLobby(s.roomCode!, player);
           } else if (!isPlayerHost) {
-            // Mid-game guest dropped -- freeze and wait for rejoin
             setPendingDisconnect(s.roomCode!, player);
           }
-          // Host drop detected by guests via the effect above
           break;
         }
       }
@@ -339,7 +334,6 @@ export function useGameState() {
 
   // ---------------------------------------------------------------------------
   // AUTO-ADVANCE: role-reveal -> team-propose
-  // Skip if game is frozen (pendingDisconnect)
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (
@@ -347,7 +341,7 @@ export function useGameState() {
       state.isHost &&
       state.phase === 'role-reveal' &&
       state.allRoleRevealsConfirmed &&
-      !state.pendingDisconnect   // don't auto-advance while frozen
+      !state.pendingDisconnect
     ) {
       advanceToTeamPropose(state.roomCode!);
     }
@@ -355,7 +349,7 @@ export function useGameState() {
 
 
   // ---------------------------------------------------------------------------
-  // AUTO-RESOLVE: team-vote -> resolve
+  // AUTO-RESOLVE: team-vote -> team-vote-results or team-propose
   // ---------------------------------------------------------------------------
   useEffect(function() {
     if (
@@ -368,14 +362,11 @@ export function useGameState() {
       const timer = setTimeout(function() {
         const s = stateRef.current;
         if (!s.allProposalVotesIn || s.phase !== 'team-vote' || !s.isHost || s.pendingDisconnect) return;
-
         const result      = evaluateProposalVotes(s.proposalVotes);
         const newCount    = s.proposalCount + 1;
         const evilAutoWin = !result.approved && newCount >= 5;
-
         const sorted        = getSortedPlayers(s.players);
         const nextLeaderIdx = (s.leaderIndex + 1) % sorted.length;
-
         resolveTeamVote(s.roomCode!, result.approved, nextLeaderIdx, newCount, evilAutoWin);
       }, 800);
       return function() { clearTimeout(timer); };
@@ -414,7 +405,7 @@ export function useGameState() {
 
 
   // ---------------------------------------------------------------------------
-  // LOCAL GAME (unchanged)
+  // LOCAL GAME (unchanged from v3.9)
   // ---------------------------------------------------------------------------
 
   function startLocalGame(totalPlayers: number): void {
@@ -534,13 +525,31 @@ export function useGameState() {
     await updateAvailableCharacters(state.roomCode, optionalSelected);
   }
 
+  // v4: Toggle the Lady of the Lake mechanic on/off from the lobby (host only)
+  async function hostToggleLadyOfTheLake(enabled: boolean): Promise<void> {
+    if (!state.roomCode) return;
+    // Optimistic local update so the toggle feels instant
+    setState(function(prev) { return { ...prev, ladyOfTheLakeEnabled: enabled }; });
+    await updateLadyOfTheLakeEnabled(state.roomCode, enabled);
+  }
+
   async function hostStartGame(): Promise<void> {
     if (!state.roomCode) return;
-    const sorted     = getSortedPlayers(state.players);
-    const deviceIds  = sorted.map(function(p) { return p.deviceId; });
-    const fullList   = getFullCharacterList(state.availableCharacters);
+    const sorted    = getSortedPlayers(state.players);
+    const deviceIds = sorted.map(function(p) { return p.deviceId; });
+    const fullList  = getFullCharacterList(state.availableCharacters);
     const assignment = assignCharacters(deviceIds, fullList);
-    await startGame(state.roomCode, assignment, state.availableCharacters);
+
+    // v4: If Lady of the Lake is enabled, pick a random initial token holder
+    // from all players. The initial holder is added to ladyHistory immediately
+    // (they hold it for quest 1 results -- cannot be investigated during that turn).
+    let initialLadyId: string | null = null;
+    if (state.ladyOfTheLakeEnabled && deviceIds.length > 0) {
+      const shuffled = shuffleArray(deviceIds);
+      initialLadyId  = shuffled[0];
+    }
+
+    await startGame(state.roomCode, assignment, state.availableCharacters, initialLadyId);
   }
 
   async function hostSubmitTeamProposal(selectedDeviceIds: string[]): Promise<void> {
@@ -553,12 +562,19 @@ export function useGameState() {
     await advanceToMissionVoting(state.roomCode);
   }
 
+  // v4: Pass LoTL flag so the firebase function can route to 'lady-of-the-lake'
+  // instead of 'team-propose' when LoTL is enabled and quest is 1–4.
   async function advanceNetworkQuest(): Promise<void> {
     if (!state.roomCode) return;
-    await firebaseAdvanceToNextQuest(state.roomCode, state.currentQuest + 1, state.leaderIndex);
+    await firebaseAdvanceToNextQuest(
+      state.roomCode,
+      state.currentQuest + 1,
+      state.leaderIndex,
+      state.ladyOfTheLakeEnabled,
+      state.ladyDeviceId
+    );
   }
 
-  // Host gives up waiting for the disconnected player -- kicks everyone
   async function hostEndGameAfterDisconnect(): Promise<void> {
     if (!state.roomCode || !state.pendingDisconnect) return;
     await hostGiveUpOnReconnect(state.roomCode, state.pendingDisconnect.name);
@@ -604,12 +620,7 @@ export function useGameState() {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // rejoinNetworkGame  (v3.9)
-  //
-  // Called from StartScreen when the player taps "Rejoin Game".
-  // Uses the rejoinInfo that was stored when they were booted for disconnect.
-  // ---------------------------------------------------------------------------
+  // v3.9: Called from StartScreen when the player taps "Rejoin Game".
   async function rejoinNetworkGame(playerName: string, roomCode: string): Promise<void> {
     setState(function(prev) { return { ...prev, isLoading: true, errorMessage: null, rejoinInfo: null }; });
     const cleanCode = roomCode.toUpperCase().trim();
@@ -621,29 +632,25 @@ export function useGameState() {
             ...prev,
             isLoading:    false,
             errorMessage: result.error || 'Could not rejoin. The game may have ended.',
-            // Preserve rejoinInfo so they can try again
             rejoinInfo:   { roomCode: cleanCode, playerName },
           };
         });
         return;
       }
-
-      // Subscribe to the room -- applyRoomData will set our phase etc.
       const unsubscribe = subscribeToRoom(
         cleanCode,
         function(data) { applyRoomData(data); },
         function()     { handleRoomGone(); }
       );
       unsubscribeRef.current = unsubscribe;
-
       setState(function(prev) {
         return {
           ...prev,
-          gameMode:  'network',
-          roomCode:  cleanCode,
-          isHost:    result.wasHost ?? false,
-          myName:    playerName,
-          isLoading: false,
+          gameMode:   'network',
+          roomCode:   cleanCode,
+          isHost:     result.wasHost ?? false,
+          myName:     playerName,
+          isLoading:  false,
           rejoinInfo: null,
         };
       });
@@ -678,6 +685,26 @@ export function useGameState() {
     if (!state.roomCode) return;
     const winner = resolveAssassination(targetDeviceId, state.characters);
     await submitAssassinationTarget(state.roomCode, targetDeviceId, winner);
+  }
+
+  // v4: Token holder investigates a player.
+  //
+  // Alignment is computed here on the client -- the characters map is already
+  // in local state on every device, so no additional Firestore read is needed.
+  // The result is written to Firestore immediately before the phase advances,
+  // so if the token holder disconnects and rejoins mid-investigation they see
+  // the already-revealed result rather than being able to re-investigate.
+  async function submitLadyInvestigation(targetDeviceId: string): Promise<void> {
+    if (!state.roomCode || !state.ladyDeviceId) return;
+    const targetCharacter = state.characters[targetDeviceId];
+    if (!targetCharacter) return;
+    const alignment = CHARACTERS[targetCharacter].alignment as 'good' | 'evil';
+    await submitLadyResult(
+      state.roomCode,
+      state.ladyDeviceId,   // current token holder
+      targetDeviceId,
+      alignment
+    );
   }
 
 
@@ -724,14 +751,15 @@ export function useGameState() {
   // ---------------------------------------------------------------------------
   // applyRoomData
   //
-  // v3.9 additions:
-  //   - Read pendingDisconnect from Firestore and store in state.
-  //   - If pendingDisconnect.deviceId === myDeviceId, this client was the one
-  //     that dropped. Boot ourselves to the start screen with rejoinInfo set.
+  // Translates a raw Firestore RoomData snapshot into local GameState.
+  //
+  // v4 additions:
+  //   - Read all four LoTL fields and map into state.
+  //   - Derive amILady (ladyDeviceId === myDeviceId).
   // ---------------------------------------------------------------------------
   function applyRoomData(data: RoomData): void {
 
-    // --- Existing: handle "everyone get out" signal ---
+    // "Everyone get out" signal written by quit or host-gave-up
     if (data.disconnectedPlayer) {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
@@ -747,7 +775,7 @@ export function useGameState() {
       return;
     }
 
-    // --- Existing: removed from lobby ---
+    // Removed from lobby (host silently pruned this device)
     const amIHost = data.hostDeviceId === myDeviceId;
     if (data.phase === 'lobby' && !amIHost) {
       const stillInRoom = data.players.some(function(p) { return p.deviceId === myDeviceId; });
@@ -765,9 +793,7 @@ export function useGameState() {
       }
     }
 
-    // --- v3.9: Am I the one who just got marked as disconnected? ---
-    // pendingDisconnect.deviceId matches my current deviceId.
-    // Boot myself to the start screen immediately, preserving rejoinInfo.
+    // v3.9: This device was the one that dropped -- boot to start screen with rejoin banner
     const pd = data.pendingDisconnect ?? null;
     if (pd && pd.deviceId === myDeviceId) {
       if (unsubscribeRef.current) {
@@ -775,19 +801,16 @@ export function useGameState() {
         unsubscribeRef.current = null;
       }
       setState(function(prev) {
-        const fresh         = getInitialState(myDeviceId);
-        // Store rejoin info so the StartScreen can offer the Rejoin button
-        fresh.rejoinInfo    = { roomCode: data.hostDeviceId ? (prev.roomCode ?? '') : '', playerName: prev.myName || pd.name };
-        // Also store the roomCode properly -- pull it from prev since data doesn't have it
-        const roomCode      = prev.roomCode ?? '';
-        fresh.rejoinInfo    = { roomCode, playerName: prev.myName || pd.name };
+        const fresh      = getInitialState(myDeviceId);
+        const roomCode   = prev.roomCode ?? '';
+        fresh.rejoinInfo = { roomCode, playerName: prev.myName || pd.name };
         fresh.disconnectMessage = 'You were disconnected from the network game.';
         return fresh;
       });
       return;
     }
 
-    // --- Normal update ---
+    // Normal update -- map all Firestore fields into local state
     const sortedPlayers  = getSortedPlayers(data.players);
     const safeLeaderIdx  = data.leaderIndex % Math.max(sortedPlayers.length, 1);
     const leaderDeviceId = sortedPlayers[safeLeaderIdx]?.deviceId ?? '';
@@ -815,6 +838,13 @@ export function useGameState() {
     );
 
     const haveICastProposalVote = myDeviceId in (data.proposalVotes || {});
+
+    // v4: LoTL derived fields
+    const ladyDeviceId = data.ladyDeviceId ?? null;
+    const amILady      = ladyDeviceId === myDeviceId;
+    // ladyResult is technically private (only the token holder should act on it)
+    // but we store it in all clients' state -- it is never rendered for non-holders
+    const ladyResult   = data.ladyResult ?? null;
 
     setState(function(prev) {
       return {
@@ -848,10 +878,16 @@ export function useGameState() {
         allRoleRevealsConfirmed: allRoleRevealsConfirmed,
         allProposalVotesIn:    allProposalVotesIn,
         haveICastProposalVote: haveICastProposalVote,
-        // v3.9: Carry pendingDisconnect into local state
+        // v3.9: pendingDisconnect freeze state
         pendingDisconnect:     pd,
-        // Store heartbeats for disconnect checker
+        // Heartbeats stored as private field for disconnect checker intervals
         _heartbeats: data.heartbeats || {},
+        // v4: LoTL fields
+        ladyOfTheLakeEnabled:  data.ladyOfTheLakeEnabled ?? false,
+        ladyDeviceId:          ladyDeviceId,
+        ladyHistory:           data.ladyHistory ?? [],
+        ladyResult:            ladyResult,
+        amILady:               amILady,
       } as any;
     });
   }
@@ -873,7 +909,7 @@ export function useGameState() {
 
   return {
     state,
-    // Local
+    // Local mode
     startLocalGame,
     castLocalVote,
     advanceLocalQuest,
@@ -881,6 +917,7 @@ export function useGameState() {
     // Network -- host
     hostNetworkGame,
     hostUpdateCharacters,
+    hostToggleLadyOfTheLake,
     hostStartGame,
     hostSubmitTeamProposal,
     hostAdvanceToMissionVoting,
@@ -893,6 +930,7 @@ export function useGameState() {
     castTeamProposalVote,
     castNetworkVote,
     submitAssassination,
+    submitLadyInvestigation,
     // Shared
     toggleSound,
     resetGame,
