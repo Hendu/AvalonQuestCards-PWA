@@ -41,7 +41,7 @@ export default function App() {
     hostToggleBots,
     hostStartGame,
     hostSubmitTeamProposal,
-    hostAdvanceToMissionVoting,
+    hostAdvanceFromVoteResults,
     advanceNetworkQuest,
     hostEndGameAfterDisconnect,
     joinNetworkGame,
@@ -237,7 +237,8 @@ export default function App() {
           isHost={isHost}
           approveCount={result.approveCount}
           rejectCount={result.rejectCount}
-          onContinue={hostAdvanceToMissionVoting}
+          approved={state.lastProposalApproved}
+          onContinue={hostAdvanceFromVoteResults}
           onResetGame={quitGame}
         />
         {state.pendingDisconnect && (

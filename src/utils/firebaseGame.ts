@@ -100,6 +100,10 @@ export interface RoomData {
 
   // v4.1: Bots
   botsEnabled:          boolean;
+
+  // v4.1.1: Team vote results always shown; this flag tells the results screen
+  // whether to proceed to mission voting (true) or back to team-propose (false)
+  lastProposalApproved: boolean;
 }
 
 
@@ -151,6 +155,7 @@ export async function createRoom(
     ladyHistory:          [],
     ladyResult:           null,
     botsEnabled:          false,
+    lastProposalApproved: false,
   };
 
   await setDoc(roomRef, initialData);
@@ -540,16 +545,37 @@ export async function resolveTeamVote(
     return;
   }
 
+  // Always route through team-vote-results so all players can see who voted
+  // what before proceeding — whether the vote passed OR failed.
+  // The results screen reads lastProposalApproved to know where to go next.
+  await updateDoc(roomRef, {
+    phase:               'team-vote-results',
+    leaderIndex:         nextLeaderIdx,
+    proposalCount:       newProposalCount,
+    lastProposalApproved: approved,
+  });
+}
+
+
+// -----------------------------------------------------------------------------
+// advanceFromVoteResults  (v4.1.1)
+//
+// Host taps Continue on the team-vote-results screen.
+// Routes to mission voting if the proposal was approved, or back to
+// team-propose (clearing the rejected team) if it was rejected.
+// -----------------------------------------------------------------------------
+export async function advanceFromVoteResults(
+  roomCode: string,
+  approved: boolean
+): Promise<void> {
+  const roomRef = doc(db, 'rooms', roomCode);
   if (approved) {
     await updateDoc(roomRef, {
-      phase:         'team-vote-results',
-      leaderIndex:   nextLeaderIdx,
-      proposalCount: newProposalCount,
+      votes: [],
+      phase: 'voting',
     });
   } else {
     await updateDoc(roomRef, {
-      leaderIndex:      nextLeaderIdx,
-      proposalCount:    newProposalCount,
       missionPlayerIds: [],
       proposalVotes:    {},
       phase:            'team-propose',
@@ -558,9 +584,7 @@ export async function resolveTeamVote(
 }
 
 
-// -----------------------------------------------------------------------------
-// advanceToMissionVoting
-// -----------------------------------------------------------------------------
+
 export async function advanceToMissionVoting(
   roomCode: string
 ): Promise<void> {

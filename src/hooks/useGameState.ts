@@ -60,6 +60,7 @@ import {
   submitTeamProposal,
   castProposalVote,
   resolveTeamVote,
+  advanceFromVoteResults,
   advanceToMissionVoting,
   submitVote,
   revealResults,
@@ -153,6 +154,9 @@ export interface GameState {
   // v4.1: Bots
   botsEnabled:          boolean;
 
+  // v4.1.1: always shown after team vote, regardless of outcome
+  lastProposalApproved: boolean;
+
   // Derived convenience flags
   amIOnMission:           boolean;
   haveIVoted:             boolean;
@@ -205,6 +209,7 @@ function getInitialState(deviceId: string): GameState {
     amILady:              false,
     // v4.1 Bots
     botsEnabled:          false,
+    lastProposalApproved: false,
     // Derived flags
     amIOnMission:           false,
     haveIVoted:             false,
@@ -880,9 +885,9 @@ export function useGameState() {
     await submitTeamProposal(state.roomCode, selectedDeviceIds);
   }
 
-  async function hostAdvanceToMissionVoting(): Promise<void> {
+  async function hostAdvanceFromVoteResults(): Promise<void> {
     if (!state.roomCode) return;
-    await advanceToMissionVoting(state.roomCode);
+    await advanceFromVoteResults(state.roomCode, state.lastProposalApproved);
   }
 
   // v4: Pass LoTL flag so the firebase function can route to 'lady-of-the-lake'
@@ -1215,6 +1220,7 @@ export function useGameState() {
         amILady:               amILady,
         // v4.1: Bots
         botsEnabled:           data.botsEnabled ?? false,
+        lastProposalApproved:  data.lastProposalApproved ?? false,
       } as any;
     });
   }
@@ -1248,7 +1254,7 @@ export function useGameState() {
     hostToggleBots,
     hostStartGame,
     hostSubmitTeamProposal,
-    hostAdvanceToMissionVoting,
+    hostAdvanceFromVoteResults,
     advanceNetworkQuest,
     hostEndGameAfterDisconnect,
     // Network -- all players

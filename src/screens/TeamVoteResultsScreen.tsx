@@ -30,7 +30,8 @@ interface TeamVoteResultsScreenProps {
   isHost:           boolean;
   approveCount:     number;
   rejectCount:      number;
-  onContinue:       () => void;   // host only: advance to mission voting
+  approved:         boolean;   // v4.1.1: passed from Firestore, not derived locally
+  onContinue:       () => void;
   onResetGame:      () => void;
 }
 
@@ -42,11 +43,10 @@ function getPlayerName(players: Player[], deviceId: string): string {
 export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps) {
   const {
     players, proposalVotes, missionPlayerIds, myCharacter,
-    isHost, approveCount, rejectCount, onContinue, onResetGame,
+    isHost, approveCount, rejectCount, approved, onContinue, onResetGame,
   } = props;
 
-  const total    = approveCount + rejectCount;
-  const approved = approveCount > total / 2;
+  const total = approveCount + rejectCount;
 
   const missionPlayerNames = missionPlayerIds.map(function(id) {
     return getPlayerName(players, id);
@@ -86,44 +86,47 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
             </p>
           </div>
 
-          {/* Approved team reminder */}
-          {approved && (
-            <div style={styles.missionTeamBox}>
-              <p style={styles.missionTeamLabel}>GOING ON THE MISSION</p>
-              {missionPlayerNames.map(function(name) {
-                return (
-                  <div key={name} style={styles.missionMemberRow}>
-                    <span style={styles.missionMemberName}>{name}</span>
-                    <span style={styles.missionMemberIcon}>⚔️</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Proposed team — show regardless of outcome */}
+          <div style={{
+            ...styles.missionTeamBox,
+            borderColor: approved ? COLORS.goodDim : COLORS.evilDim,
+          }}>
+            <p style={styles.missionTeamLabel}>
+              {approved ? 'GOING ON THE MISSION' : 'REJECTED TEAM'}
+            </p>
+            {missionPlayerNames.map(function(name) {
+              return (
+                <div key={name} style={styles.missionMemberRow}>
+                  <span style={styles.missionMemberName}>{name}</span>
+                  <span style={styles.missionMemberIcon}>{approved ? '⚔️' : '✕'}</span>
+                </div>
+              );
+            })}
+          </div>
 
           {/* Vote table: who voted what */}
           <div style={styles.voteTable}>
             <p style={styles.voteTableLabel}>ALL VOTES</p>
             {players.map(function(player) {
-              const vote     = proposalVotes[player.deviceId];
-              const approved = vote === true;
-              const rejected = vote === false;
-              const pending  = vote === undefined;
+              const vote        = proposalVotes[player.deviceId];
+              const votedApprove = vote === true;
+              const votedReject  = vote === false;
+              const pending      = vote === undefined;
               return (
                 <div key={player.deviceId} style={styles.voteRow}>
                   <span style={styles.voteName}>{player.name}</span>
                   <div style={styles.voteTokenWrapper}>
                     <span style={{
                       ...styles.voteLabel,
-                      color: approved ? COLORS.good : rejected ? COLORS.evil : COLORS.textMuted,
+                      color: votedApprove ? COLORS.good : votedReject ? COLORS.evil : COLORS.textMuted,
                     }}>
-                      {pending ? '—' : approved ? 'Approve' : 'Reject'}
+                      {pending ? '—' : votedApprove ? 'Approve' : 'Reject'}
                     </span>
                     {!pending && (
                       <img
-                        src={`/assets/images/tokens/${approved ? 'approve' : 'reject'}.svg`}
+                        src={`/assets/images/tokens/${votedApprove ? 'approve' : 'reject'}.svg`}
                         style={styles.voteTokenImage}
-                        alt={approved ? 'Approve' : 'Reject'}
+                        alt={votedApprove ? 'Approve' : 'Reject'}
                       />
                     )}
                   </div>
@@ -138,7 +141,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
         <div style={styles.bottomBar}>
           {isHost ? (
             <button style={styles.continueButton} onClick={onContinue}>
-              {'PROCEED TO MISSION →'}
+              {approved ? 'PROCEED TO MISSION →' : 'BACK TO PROPOSALS →'}
             </button>
           ) : (
             <p style={styles.guestWaiting}>
