@@ -167,9 +167,21 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               {winner === 'good'
                 ? gameMode === 'local'
                   ? "Good has completed 3 quests!\nBut Merlin must still survive the Assassin's blade.\nDoes the Assassin know who Merlin is?"
-                  : "Merlin survived the Assassin's blade.\nThe forces of Good prevail!"
+                  : (() => {
+                      const merlinId   = Object.entries(state.characters).find(function([, c]) { return c === 'Merlin'; })?.[0];
+                      const merlinName = merlinId ? getPlayerName(players, merlinId) : null;
+                      return merlinName
+                        ? `Merlin (${merlinName}) survived the Assassin's blade.\nThe forces of Good prevail!`
+                        : "Merlin survived the Assassin's blade.\nThe forces of Good prevail!";
+                    })()
                 : assassinTarget !== null
-                  ? "The Assassin found Merlin.\nEvil wins by assassination."
+                  ? (() => {
+                      const merlinId   = Object.entries(state.characters).find(function([, c]) { return c === 'Merlin'; })?.[0];
+                      const merlinName = merlinId ? getPlayerName(players, merlinId) : null;
+                      return merlinName
+                        ? `The Assassin found Merlin (${merlinName}).\nEvil wins by assassination.`
+                        : "The Assassin found Merlin.\nEvil wins by assassination.";
+                    })()
                   : lastQuestResult === null
                     ? "Five proposals were rejected.\nEvil wins automatically."
                     : "The forces of Evil have sabotaged 3 quests.\nDarkness reigns."}
