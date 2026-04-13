@@ -234,10 +234,18 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 { role: 'Produced by',  name: 'Ryan Henderson' },
               ];
 
+              const merlinEntry     = Object.entries(state.characters).find(function([, c]) { return c === 'Merlin'; });
+              const merlinName      = merlinEntry ? getPlayerName(players, merlinEntry[0]) : null;
+              const servantEntries  = Object.entries(state.characters)
+                .filter(function([, c]) { return c === 'Loyal Servant of Arthur'; })
+                .sort(function([a], [b]) { return a.localeCompare(b); }); // stable order
+              const introServant    = servantEntries.length > 0 ? servantEntries[servantEntries.length - 1] : null;
+              const regularServants = servantEntries.slice(0, servantEntries.length - 1);
+
               // Estimate total content height to set scroll duration
               // ~20px per cast row, ~12px spacer, ~28px section label
-              const rowCount = goodCast.length + evilCast.length + productionCredits.length;
-              const estimatedHeight = rowCount * 22 + 4 * 12 + 2 * 28 + 60; // rows + spacers + labels + padding
+              const rowCount = goodCast.length + evilCast.length + productionCredits.length + 2; // +2 for special credits
+              const estimatedHeight = rowCount * 22 + 4 * 12 + 2 * 28 + 60;
 
               function CreditRow({ left, right }: { left: string; right: string }) {
                 return (
@@ -258,19 +266,41 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               const content = (
                 <div>
                   <p style={styles.creditsTitle}>Cast</p>
-                  {goodCast.map(function([deviceId, character]) {
-                    return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
+                  {goodCast
+                    .filter(function([, c]) { return c !== 'Merlin' && c !== 'Loyal Servant of Arthur'; })
+                    .map(function([deviceId, character]) {
+                      return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
+                    })
+                  }
+                  {regularServants.map(function([deviceId], index) {
+                    return (
+                      <CreditRow
+                        key={deviceId}
+                        left={index === 0 ? 'Loyal Servants' : ''}
+                        right={getPlayerName(players, deviceId)}
+                      />
+                    );
                   })}
-                  <div style={styles.creditsSpacer} />
                   {evilCast.map(function([deviceId, character]) {
                     return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
                   })}
+                  {introServant && (
+                    <CreditRow
+                      left="And Introducing..."
+                      right={`${getPlayerName(players, introServant[0])} as Bob, the Know-Nothing Blue`}
+                    />
+                  )}
+                  {merlinName && (
+                    <CreditRow left={`And ${merlinName}`} right="as Merlin" />
+                  )}
                   <div style={styles.creditsSpacer} />
                   <div style={styles.creditsSpacer} />
                   <p style={styles.creditsSectionLabel}>Crew</p>
                   {productionCredits.map(function(credit) {
                     return <CreditRow key={credit.role} left={credit.role} right={credit.name} />;
                   })}
+                  <div style={styles.creditsSpacer} />
+                  <p style={styles.creditsCopyright}>© MMXXVI Ryan Henderson. All Rights Reserved.</p>
                   <div style={{ height: 30 }} />
                 </div>
               );
@@ -619,6 +649,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
   creditsSpacer: {
     height: 12,
+  },
+  creditsCopyright: {
+    fontSize:      10,
+    color:         '#999999',
+    textAlign:     'center',
+    margin:        '0',
+    letterSpacing: '0.5px',
   },
   creditsSectionLabel: {
     fontSize:      12,
