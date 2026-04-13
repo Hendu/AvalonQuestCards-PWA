@@ -15,9 +15,9 @@
 //   - All voting happens on one device
 // =============================================================================
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameState } from '../hooks/useGameState';
-import { VoteResult, getMissionSize, getFailsRequired } from '../utils/gameLogic';
+import { VoteResult, getMissionSize, getFailsRequired, CHARACTERS } from '../utils/gameLogic';
 import { Player } from '../utils/firebaseGame';
 import QuestTracker from '../components/QuestTracker';
 import VoteCards    from '../components/VoteCards';
@@ -50,6 +50,32 @@ function playSound(file: string) {
 function getPlayerName(players: Player[], deviceId: string): string {
   const player = players.find(function(p) { return p.deviceId === deviceId; });
   return player ? player.name : 'Unknown';
+}
+
+// Two-phase credits scroller:
+//   Phase 1 (intro): slides up from below the viewport, plays once
+//   Phase 2 (loop):  seamless infinite scroll, no gap between repeats
+function CreditsTrack(props: {
+  content:       React.ReactNode;
+  introDuration: number;
+  loopDuration:  number;
+}) {
+  const { content, introDuration, loopDuration } = props;
+  const [looping, setLooping] = useState(false);
+
+  return (
+    <div
+      style={{
+        animation: looping
+          ? `creditsLoop ${loopDuration}s linear infinite`
+          : `creditsIntro ${introDuration}s linear forwards`,
+      }}
+      onAnimationEnd={function() { setLooping(true); }}
+    >
+      {content}
+      {looping && content}
+    </div>
+  );
 }
 
 export default function GameBoardScreen(props: GameBoardScreenProps) {
@@ -167,21 +193,9 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               {winner === 'good'
                 ? gameMode === 'local'
                   ? "Good has completed 3 quests!\nBut Merlin must still survive the Assassin's blade.\nDoes the Assassin know who Merlin is?"
-                  : (() => {
-                      const merlinId   = Object.entries(state.characters).find(function([, c]) { return c === 'Merlin'; })?.[0];
-                      const merlinName = merlinId ? getPlayerName(players, merlinId) : null;
-                      return merlinName
-                        ? `Merlin (${merlinName}) survived the Assassin's blade.\nThe forces of Good prevail!`
-                        : "Merlin survived the Assassin's blade.\nThe forces of Good prevail!";
-                    })()
+                  : "Merlin survived the Assassin's blade.\nThe forces of Good prevail!"
                 : assassinTarget !== null
-                  ? (() => {
-                      const merlinId   = Object.entries(state.characters).find(function([, c]) { return c === 'Merlin'; })?.[0];
-                      const merlinName = merlinId ? getPlayerName(players, merlinId) : null;
-                      return merlinName
-                        ? `The Assassin found Merlin (${merlinName}).\nEvil wins by assassination.`
-                        : "The Assassin found Merlin.\nEvil wins by assassination.";
-                    })()
+                  ? "The Assassin found Merlin.\nEvil wins by assassination."
                   : lastQuestResult === null
                     ? "Five proposals were rejected.\nEvil wins automatically."
                     : "The forces of Evil have sabotaged 3 quests.\nDarkness reigns."}
@@ -195,6 +209,96 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 successCount={lastQuestResult.successCount}
               />
             )}
+
+            {/* Movie-style scrolling credits — always shown in network mode after game ends */}
+            {gameMode === 'network' && Object.keys(state.characters).length > 0 && (() => {
+              const goodOrder  = ['Merlin','Percival','Loyal Servant of Arthur','Loyal Servant'];
+              const evilOrder  = ['Assassin','Morgana','Mordred','Oberon','Minion of Mordred','Minion'];
+
+              function sortedByOrder(order: string[], alignment: 'good' | 'evil') {
+                const entries = Object.entries(state.characters)
+                  .filter(function([, c]) { return CHARACTERS[c].alignment === alignment; });
+                return entries.sort(function([, a], [, b]) {
+                  const ai = order.indexOf(a);
+                  const bi = order.indexOf(b);
+                  return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                });
+              }
+
+              const goodCast = sortedByOrder(goodOrder, 'good');
+              const evilCast = sortedByOrder(evilOrder, 'evil');
+
+              const productionCredits = [
+                { role: 'Directed by',  name: 'Ryan Henderson' },
+                { role: 'Written by',   name: 'Ryan Henderson' },
+                { role: 'Produced by',  name: 'Ryan Henderson' },
+              ];
+
+              // Estimate total content height to set scroll duration
+              // ~20px per cast row, ~12px spacer, ~28px section label
+              const rowCount = goodCast.length + evilCast.length + productionCredits.length;
+              const estimatedHeight = rowCount * 22 + 4 * 12 + 2 * 28 + 60; // rows + spacers + labels + padding
+
+              function CreditRow({ left, right }: { left: string; right: string }) {
+                return (
+                  <div style={styles.creditsRow}>
+                    <span style={styles.creditsCharacter}>{left}</span>
+                    <span style={styles.creditsPlayer}>{right}</span>
+                  </div>
+                );
+              }
+
+              const viewportHeight = 180;
+              const onePassHeight  = estimatedHeight + 30;
+              const pxPerSec       = 35;   // cinematic credits speed
+              // Both phases scroll at the same px/s rate
+              const introDuration  = viewportHeight / pxPerSec;
+              const loopDuration   = onePassHeight  / pxPerSec;
+
+              const content = (
+                <div>
+                  <p style={styles.creditsTitle}>Cast</p>
+                  {goodCast.map(function([deviceId, character]) {
+                    return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
+                  })}
+                  <div style={styles.creditsSpacer} />
+                  {evilCast.map(function([deviceId, character]) {
+                    return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
+                  })}
+                  <div style={styles.creditsSpacer} />
+                  <div style={styles.creditsSpacer} />
+                  <p style={styles.creditsSectionLabel}>Crew</p>
+                  {productionCredits.map(function(credit) {
+                    return <CreditRow key={credit.role} left={credit.role} right={credit.name} />;
+                  })}
+                  <div style={{ height: 30 }} />
+                </div>
+              );
+
+              const animStyle = `
+                @keyframes creditsIntro {
+                  0%   { transform: translateY(${viewportHeight}px); }
+                  100% { transform: translateY(0px); }
+                }
+                @keyframes creditsLoop {
+                  0%   { transform: translateY(0px); }
+                  100% { transform: translateY(-50%); }
+                }
+              `;
+
+              return (
+                <div style={styles.creditsContainer}>
+                  <style>{animStyle}</style>
+                  <div style={styles.creditsViewport}>
+                    <CreditsTrack
+                      content={content}
+                      introDuration={introDuration}
+                      loopDuration={loopDuration}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
             {(gameMode === 'local' || isHost) && (
               <button style={styles.primaryButton} onClick={onResetGame}>
                 {gameMode === 'local' && winner === 'good' ? 'RESOLVE & PLAY AGAIN' : 'START NEW GAME'}
@@ -393,7 +497,11 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               )}
               {/* NETWORK: vote cards for mission players who haven't voted */}
               {phase === 'voting' && gameMode === 'network' && amIOnMission && !haveIVoted && (
-                <VoteCards onVote={onVote} disabled={false} />
+                <VoteCards
+                  onVote={onVote}
+                  disabled={false}
+                  isGoodPlayer={!!(myCharacter && CHARACTERS[myCharacter].alignment === 'good')}
+                />
               )}
               {/* RESULTS: continue button */}
               {phase === 'results' && (gameMode === 'local' || isHost) && (
@@ -461,6 +569,65 @@ const styles: Record<string, React.CSSProperties> = {
     textShadow: '0 1px 6px rgba(0,0,0,0.9)',
     whiteSpace: 'pre-line',
     margin:     0,
+  },
+  creditsContainer: {
+    width:           '90%',
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    borderRadius:    8,
+    overflow:        'hidden',
+  },
+  creditsViewport: {
+    height:   180,
+    overflow: 'hidden',
+    padding:  '0 24px',
+  },
+  creditsTitle: {
+    fontSize:      12,
+    color:         '#ffffff',
+    fontWeight:    '400',
+    textAlign:     'center',
+    margin:        '0 0 10px 0',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
+  },
+  creditsRow: {
+    display:        'flex',
+    flexDirection:  'row',
+    justifyContent: 'center',
+    alignItems:     'baseline',
+    marginBottom:   4,
+  },
+  creditsCharacter: {
+    fontSize:      12,
+    color:         '#999999',
+    fontWeight:    '400',
+    textAlign:     'right',
+    flex:          1,
+    paddingRight:  12,
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase' as const,
+  },
+  creditsPlayer: {
+    fontSize:      12,
+    color:         '#ffffff',
+    fontWeight:    '400',
+    textAlign:     'left',
+    flex:          1,
+    paddingLeft:   12,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
+  creditsSpacer: {
+    height: 12,
+  },
+  creditsSectionLabel: {
+    fontSize:      12,
+    color:         '#ffffff',
+    fontWeight:    '400',
+    textAlign:     'center',
+    margin:        '4px 0 8px 0',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
   },
   gameContent: {
     display:       'flex',

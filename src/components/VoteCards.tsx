@@ -90,14 +90,15 @@ function injectStyles() {
 }
 
 interface VoteCardsProps {
-  onVote:   (result: VoteResult) => void;
-  disabled: boolean;
+  onVote:        (result: VoteResult) => void;
+  disabled:      boolean;
+  isGoodPlayer?: boolean;   // if true, fail card is locked — good must choose success
 }
 
 type CardState = 'down' | 'up' | 'chosen' | 'returned';
 
 export default function VoteCards(props: VoteCardsProps) {
-  const { onVote, disabled } = props;
+  const { onVote, disabled, isGoodPlayer = false } = props;
 
   useEffect(function() { injectStyles(); }, []);
 
@@ -135,22 +136,19 @@ export default function VoteCards(props: VoteCardsProps) {
   function handleCardChosen(index: number) {
     if (locked || !isRevealed || states[index] !== 'up') return;
 
-    // Lock immediately -- disables hover and pointer events on both cards
-    setLocked(true);
+    // Good players cannot choose fail — silently ignore taps on the fail card
+    if (isGoodPlayer && cardOrder[index] === 'fail') return;
 
-    // Chosen card flips back down; unchosen card dims
+    setLocked(true);
     const otherIndex = index === 0 ? 1 : 0;
     const newStates: [CardState, CardState] = ['down', 'down'];
     newStates[index]      = 'chosen';
     newStates[otherIndex] = 'returned';
     setStates(newStates);
 
-    // After flip animation, submit vote and reset
     setTimeout(function() {
       const vote = cardOrder[index];
       onVote(vote);
-
-      // Full reset for next player
       setIsRevealed(false);
       setLocked(false);
       setRevealLocked(false);
@@ -165,9 +163,12 @@ export default function VoteCards(props: VoteCardsProps) {
         {([0, 1] as const).map(function(index) {
           const cardState = states[index];
           const cardValue = cardOrder[index];
+          const isFailCard = cardValue === 'fail';
 
-          // choosable = face-up AND nothing chosen yet
-          const isChoosable  = (cardState === 'up' && !locked && !revealLocked);
+          // Good players: fail card is visually disabled once revealed
+          const failLocked = isGoodPlayer && isFailCard && isRevealed;
+
+          const isChoosable  = (cardState === 'up' && !locked && !revealLocked && !failLocked);
           const isRevealable = (cardState === 'down' && !isRevealed && !disabled && !locked);
 
           const sceneClass = [
@@ -175,9 +176,9 @@ export default function VoteCards(props: VoteCardsProps) {
             isChoosable  ? 'choosable' : '',
             locked       ? 'locked'    : '',
             isRevealable ? 'choosable' : '',
+            failLocked   ? 'locked'    : '',
           ].filter(Boolean).join(' ');
 
-          // clicking a face-down card reveals both; clicking a face-up card votes
           function handleClick() {
             if (isRevealable) handleReveal();
             else if (isChoosable) handleCardChosen(index);
@@ -187,16 +188,13 @@ export default function VoteCards(props: VoteCardsProps) {
             <div
               key={index}
               className={sceneClass}
+              style={failLocked ? { opacity: 0.35 } : undefined}
               onClick={(isRevealable || isChoosable) ? handleClick : undefined}
             >
               <div className={`vc-inner state-${cardState}`}>
-
-                {/* Front face: always the card back */}
                 <div className="vc-face vc-front">
                   <img src="/assets/images/back.png" alt="card" />
                 </div>
-
-                {/* Back face: the actual vote value */}
                 <div className="vc-face vc-back">
                   <img
                     src={cardValue === 'success'
@@ -205,7 +203,6 @@ export default function VoteCards(props: VoteCardsProps) {
                     alt={cardValue}
                   />
                 </div>
-
               </div>
             </div>
           );
@@ -216,8 +213,14 @@ export default function VoteCards(props: VoteCardsProps) {
       {!isRevealed && !disabled && (
         <p className="vc-pulse" style={styles.promptText}>TAP TO VIEW YOUR CARDS</p>
       )}
-      {isRevealed && !locked && (
+      {isRevealed && !locked && !isGoodPlayer && (
         <p style={styles.promptText}>CHOOSE YOUR CARD TO VOTE</p>
+      )}
+      {isRevealed && !locked && isGoodPlayer && (
+        <>
+          <p style={styles.promptText}>CHOOSE YOUR CARD TO VOTE</p>
+          <p style={styles.goodPlayerNote}>You are Good — you must choose Success</p>
+        </>
       )}
     </div>
   );
@@ -243,5 +246,12 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase',
     textAlign:     'center',
     margin:        0,
+  },
+  goodPlayerNote: {
+    fontSize:   12,
+    color:      COLORS.good,
+    textAlign:  'center',
+    margin:     0,
+    fontStyle:  'italic',
   },
 };
