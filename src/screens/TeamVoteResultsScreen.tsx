@@ -33,6 +33,8 @@ interface TeamVoteResultsScreenProps {
   approved:         boolean;   // v4.1.1: passed from Firestore, not derived locally
   onContinue:       () => void;
   onResetGame:      () => void;
+  soundEnabled:     boolean;
+  onToggleSound:    () => void;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -44,6 +46,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
   const {
     players, proposalVotes, missionPlayerIds, myCharacter,
     isHost, approveCount, rejectCount, approved, onContinue, onResetGame,
+    soundEnabled, onToggleSound,
   } = props;
 
   const total = approveCount + rejectCount;
@@ -59,6 +62,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
 
         {/* Top bar */}
         <div style={styles.topBar}>
+          <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>TEAM VOTE RESULTS</span>
           <div style={styles.topBarRight}>
             {myCharacter && <CharacterBadge character={myCharacter} />}

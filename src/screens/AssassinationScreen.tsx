@@ -32,7 +32,9 @@ interface AssassinationScreenProps {
   amIAssassin:       boolean;
   onSubmitTarget:    (targetDeviceId: string) => void;
   onResetGame:       () => void;
-  isHost:           boolean;
+  isHost:            boolean;
+  soundEnabled:      boolean;
+  onToggleSound:     () => void;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -43,7 +45,7 @@ function getPlayerName(players: Player[], deviceId: string): string {
 export default function AssassinationScreen(props: AssassinationScreenProps) {
   const {
     players, characters, myDeviceId, myCharacter,
-    amIAssassin, isHost, onSubmitTarget, onResetGame,
+    amIAssassin, isHost, onSubmitTarget, onResetGame, soundEnabled, onToggleSound,
   } = props;
 
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
@@ -77,6 +79,7 @@ export default function AssassinationScreen(props: AssassinationScreenProps) {
 
         {/* Top bar */}
         <div style={styles.topBar}>
+          <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>ASSASSINATION</span>
           <div style={styles.topBarRight}>
             {myCharacter && <CharacterBadge character={myCharacter} />}

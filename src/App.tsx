@@ -79,6 +79,8 @@ export default function App() {
         errorMessage={state.errorMessage}
         disconnectMessage={state.disconnectMessage}
         rejoinInfo={state.rejoinInfo}
+        soundEnabled={state.soundEnabled}
+        onToggleSound={toggleSound}
       />
     );
   }
@@ -102,6 +104,8 @@ export default function App() {
         onToggleBots={hostToggleBots}
         onStartGame={hostStartGame}
         onLeave={resetGame}
+        soundEnabled={state.soundEnabled}
+        onToggleSound={toggleSound}
       />
     );
   }
@@ -127,6 +131,10 @@ export default function App() {
           confirmedRoleReveal={state.confirmedRoleReveal}
           totalPlayers={state.totalPlayers}
           onConfirm={playerConfirmRoleReveal}
+          onResetGame={quitGame}
+          isHost={isHost}
+          soundEnabled={state.soundEnabled}
+          onToggleSound={toggleSound}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -170,6 +178,8 @@ export default function App() {
           ladyOfTheLakeEnabled={state.ladyOfTheLakeEnabled}
           ladyResult={state.ladyResult}
           ladyHistory={state.ladyHistory}
+          soundEnabled={state.soundEnabled}
+          onToggleSound={toggleSound}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -210,6 +220,8 @@ export default function App() {
           isHost={isHost}
           onVote={castTeamProposalVote}
           onResetGame={quitGame}
+          soundEnabled={state.soundEnabled}
+          onToggleSound={toggleSound}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -243,6 +255,8 @@ export default function App() {
           approved={state.lastProposalApproved}
           onContinue={hostAdvanceFromVoteResults}
           onResetGame={quitGame}
+          soundEnabled={state.soundEnabled}
+          onToggleSound={toggleSound}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -279,6 +293,8 @@ export default function App() {
         disconnectedPlayerIsHost={disconnectedPlayerIsHost}
         onHostEndGame={hostEndGameAfterDisconnect}
         onGuestLeave={quitGame}
+        soundEnabled={state.soundEnabled}
+        onToggleSound={toggleSound}
       />
     );
   }
@@ -298,6 +314,8 @@ export default function App() {
           isHost={isHost}
           onSubmitTarget={submitAssassination}
           onResetGame={quitGame}
+          soundEnabled={state.soundEnabled}
+          onToggleSound={toggleSound}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal

@@ -27,6 +27,7 @@ import { Player, PendingDisconnect } from '../utils/firebaseGame';
 import { CharacterName, CHARACTERS } from '../utils/gameLogic';
 import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import CharacterBadge      from '../components/CharacterBadge';
+import QuitButton          from '../components/QuitButton';
 import DisconnectWaitModal from '../components/DisconnectWaitModal';
 
 interface LadyOfTheLakeScreenProps {
@@ -47,6 +48,8 @@ interface LadyOfTheLakeScreenProps {
   disconnectedPlayerIsHost: boolean;
   onHostEndGame:            () => void;
   onGuestLeave:             () => void;
+  soundEnabled:             boolean;
+  onToggleSound:            () => void;
 }
 
 function nameOf(players: Player[], deviceId: string): string {
@@ -60,7 +63,7 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
     characters,
     onSubmitInvestigation, onResetGame,
     pendingDisconnect, isHost, disconnectedPlayerIsHost,
-    onHostEndGame, onGuestLeave,
+    onHostEndGame, onGuestLeave, soundEnabled, onToggleSound,
   } = props;
 
   const [selectedTarget,    setSelectedTarget]    = useState<string | null>(null);
@@ -139,8 +142,12 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
         <div style={styles.overlay} />
         <div style={styles.content}>
           <div style={styles.topBar}>
+            <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
             <span style={styles.topBarTitle}>LADY OF THE LAKE</span>
-            {myCharacter && <CharacterBadge character={myCharacter} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {myCharacter && <CharacterBadge character={myCharacter} />}
+              <QuitButton onConfirm={onResetGame} isHost={isHost} />
+            </div>
           </div>
 
           <div style={styles.scrollArea}>
@@ -215,8 +222,12 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
         <div style={styles.overlay} />
         <div style={styles.content}>
           <div style={styles.topBar}>
+            <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
             <span style={styles.topBarTitle}>LADY OF THE LAKE</span>
-            {myCharacter && <CharacterBadge character={myCharacter} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {myCharacter && <CharacterBadge character={myCharacter} />}
+              <QuitButton onConfirm={onResetGame} isHost={isHost} />
+            </div>
           </div>
 
           <div style={styles.scrollArea}>
@@ -308,8 +319,12 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
       <div style={styles.overlay} />
       <div style={styles.content}>
         <div style={styles.topBar}>
+          <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>LADY OF THE LAKE</span>
-          {myCharacter && <CharacterBadge character={myCharacter} />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {myCharacter && <CharacterBadge character={myCharacter} />}
+            <QuitButton onConfirm={onResetGame} isHost={isHost} />
+          </div>
         </div>
 
         <div style={styles.scrollArea}>
@@ -371,6 +386,7 @@ const styles: Record<string, React.CSSProperties> = {
   overlay:          { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.78)' },
   content:          { position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' },
   topBar:           { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px`, borderBottom: '1px solid rgba(42,45,69,0.8)', backgroundColor: 'rgba(13,15,26,0.7)', flexShrink: 0 },
+  iconButton:       { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px', flexShrink: 0 },
   topBarTitle:      { fontSize: 11, color: COLORS.textMuted, letterSpacing: '3px', fontWeight: '600' },
   scrollArea:       { flex: 1, overflowY: 'auto', padding: SPACING.md, display: 'flex', flexDirection: 'column', gap: SPACING.lg },
   bottomBar:        { flexShrink: 0, padding: `${SPACING.md}px`, borderTop: '1px solid rgba(42,45,69,0.5)', backgroundColor: 'rgba(13,15,26,0.85)' },

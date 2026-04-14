@@ -41,6 +41,8 @@ interface LobbyScreenProps {
   // v4.1: Bots toggle
   botsEnabled:           boolean;
   onToggleBots:          (enabled: boolean) => void;
+  soundEnabled:          boolean;
+  onToggleSound:         () => void;
 }
 
 const REPEATABLE: CharacterName[]      = ['Loyal Servant of Arthur', 'Minion of Mordred'];
@@ -68,7 +70,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     roomCode, isHost, players, totalPlayers, myDeviceId,
     availableCharacters, onUpdateCharacters, onStartGame, onLeave,
     ladyOfTheLakeEnabled, onToggleLadyOfTheLake,
-    botsEnabled, onToggleBots,
+    botsEnabled, onToggleBots, soundEnabled, onToggleSound,
   } = props;
 
   // Which character card is currently zoomed (null = none)
@@ -394,8 +396,11 @@ export default function LobbyScreen(props: LobbyScreenProps) {
 
         {/* Top bar */}
         <div style={styles.topBar}>
+          <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>AVALON QUEST CARDS</span>
-          <button style={styles.iconButton} onClick={onLeave}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button style={styles.iconButton} onClick={onLeave}>✕</button>
+          </div>
         </div>
 
         <div style={styles.scrollArea}>

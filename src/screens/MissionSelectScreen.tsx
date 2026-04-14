@@ -11,8 +11,9 @@
 import React, { useState } from 'react';
 import { Player } from '../utils/firebaseGame';
 import { getMissionSize, getFailsRequired, VOTES_REQUIRED } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import QuestTracker from '../components/QuestTracker';
+import QuitButton from '../components/QuitButton';
 import { QuestOutcome } from '../utils/gameLogic';
 
 interface MissionSelectScreenProps {
@@ -26,13 +27,15 @@ interface MissionSelectScreenProps {
   myName:           string;
   onSendOnMission:  (deviceIds: string[]) => void;
   onResetGame:      () => void;
+  soundEnabled:     boolean;
+  onToggleSound:    () => void;
 }
 
 export default function MissionSelectScreen(props: MissionSelectScreenProps) {
   const {
     isHost, players, currentQuest, totalPlayers,
     goodWins, evilWins, questOutcomes, myName,
-    onSendOnMission, onResetGame,
+    onSendOnMission, onResetGame, soundEnabled, onToggleSound,
   } = props;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -71,8 +74,11 @@ export default function MissionSelectScreen(props: MissionSelectScreenProps) {
 
         {/* Top bar */}
         <div style={styles.topBar}>
+          <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>AVALON QUEST CARDS</span>
-          <button style={styles.iconButton} onClick={onResetGame}>↺</button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <QuitButton onConfirm={onResetGame} isHost={isHost} />
+          </div>
         </div>
 
         <div style={styles.scrollArea}>

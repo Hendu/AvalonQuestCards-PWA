@@ -26,6 +26,8 @@ interface StartScreenProps {
   errorMessage:      string | null;
   disconnectMessage: string | null;
   rejoinInfo:        RejoinInfo | null;
+  soundEnabled:      boolean;
+  onToggleSound:     () => void;
 }
 
 const PLAYER_OPTIONS   = [5, 6, 7, 8, 9, 10];
@@ -57,6 +59,7 @@ export default function StartScreen(props: StartScreenProps) {
   const {
     onStartLocal, onHostNetwork, onJoinNetwork, onRejoinNetwork,
     isLoading, errorMessage, disconnectMessage, rejoinInfo,
+    soundEnabled, onToggleSound,
   } = props;
 
   const [mode,            setMode]           = useState<StartMode>('choose');
@@ -212,6 +215,11 @@ export default function StartScreen(props: StartScreenProps) {
 
   return (
     <div style={styles.screen}>
+
+      {/* Top bar — sound toggle only, no quit (can't close a PWA tab) */}
+      <div style={styles.topBar}>
+        <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
+      </div>
 
       <div style={styles.titleSection}>
         <h1 style={styles.title}>AVALON</h1>
@@ -414,6 +422,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'flex-end', padding: SPACING.xl, paddingBottom: SPACING.xxl, gap: SPACING.lg,
   },
+  topBar: {
+    position:        'absolute' as const,
+    top:             0,
+    left:            0,
+    right:           0,
+    display:         'flex',
+    alignItems:      'center',
+    padding:         `${SPACING.sm}px ${SPACING.md}px`,
+    backgroundColor: 'rgba(13,15,26,0.7)',
+    borderBottom:    '1px solid rgba(42,45,69,0.8)',
+    zIndex:          10,
+  },
+  iconButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px' },
   titleSection:   { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   title:          { fontSize: 44, fontWeight: '800', color: COLORS.gold, letterSpacing: '8px', textShadow: '0 2px 8px rgba(0,0,0,0.9)', margin: 0 },
   subtitle:       { fontSize: 16, color: COLORS.textSecondary, letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 1px 6px rgba(0,0,0,0.9)', margin: 0 },

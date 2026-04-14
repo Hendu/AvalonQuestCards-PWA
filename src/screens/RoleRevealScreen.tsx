@@ -15,6 +15,7 @@ import {
 } from '../utils/gameLogic';
 import { Player } from '../utils/firebaseGame';
 import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
+import QuitButton from '../components/QuitButton';
 
 interface RoleRevealScreenProps {
   myCharacter:         CharacterName;
@@ -24,6 +25,10 @@ interface RoleRevealScreenProps {
   confirmedRoleReveal: string[];
   totalPlayers:        number;
   onConfirm:           () => void;
+  onResetGame:         () => void;
+  isHost:              boolean;
+  soundEnabled:        boolean;
+  onToggleSound:       () => void;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -34,7 +39,8 @@ function getPlayerName(players: Player[], deviceId: string): string {
 export default function RoleRevealScreen(props: RoleRevealScreenProps) {
   const {
     myCharacter, myDeviceId, players, characters,
-    confirmedRoleReveal, totalPlayers, onConfirm,
+    confirmedRoleReveal, totalPlayers, onConfirm, soundEnabled, onToggleSound,
+    onResetGame, isHost,
   } = props;
 
   const info           = CHARACTERS[myCharacter];
@@ -68,8 +74,16 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
       <div style={styles.content}>
 
         <div style={styles.header}>
-          <p style={styles.headerLabel}>YOUR CHARACTER</p>
-          <p style={styles.headerHint}>This screen is private — don't show others!</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
+            <div>
+              <p style={styles.headerLabel}>YOUR CHARACTER</p>
+              <p style={styles.headerHint}>This screen is private — don't show others!</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <QuitButton onConfirm={onResetGame} isHost={isHost} />
+            </div>
+          </div>
         </div>
 
         <div style={styles.scrollArea}>
@@ -219,6 +233,7 @@ const styles: Record<string, React.CSSProperties> = {
   visionName:   { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary },
   visionLabel2: { fontSize: 13, color: COLORS.textSecondary, fontStyle: 'italic' },
   visionNobody: { fontSize: 14, color: COLORS.textSecondary, fontStyle: 'italic', margin: 0 },
+  iconButton: { background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: COLORS.textPrimary, padding: '4px 8px', flexShrink: 0 },
   confirmButton: {
     width: '100%', padding: `${SPACING.md}px`, backgroundColor: COLORS.gold,
     border: 'none', borderRadius: 20, fontSize: 15, fontWeight: '800',
