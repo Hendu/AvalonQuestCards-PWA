@@ -535,12 +535,13 @@ export default function LobbyScreen(props: LobbyScreenProps) {
               {REPEATABLE.map(function(name) {
                 const info   = CHARACTERS[name];
                 const count  = countOf(availableCharacters, name);
-                const canInc = isHost && slotsRemaining > 0 &&
+                const canInc   = isHost && slotsRemaining > 0 &&
                   (info.alignment === 'evil' ? evilSlotsLeft > 0 : goodSlotsLeft > 0);
-                const canDec = isHost && count > 0;
+                const canDec   = isHost && count > 0;
+                const fullSlots = count === 0 && !canInc;
 
                 return (
-                  <div key={name} style={styles.fillerRow}>
+                  <div key={name} style={{ ...styles.fillerRow, opacity: fullSlots ? 0.35 : 1 }}>
                     {/* Tapping image/name zooms the card */}
                     <button
                       style={styles.fillerInfoBtn}

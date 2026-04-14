@@ -38,6 +38,23 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
   } = props;
 
   const info           = CHARACTERS[myCharacter];
+  const allChars = Object.values(characters);
+  const hasMordred = allChars.includes('Mordred');
+  const hasMorgana = allChars.includes('Morgana');
+
+  function getDescription(): string {
+    if (myCharacter === 'Merlin') {
+      return hasMordred
+        ? info.description
+        : 'You know who the evil players are. Keep your identity secret or the Assassin will strike.';
+    }
+    if (myCharacter === 'Percival') {
+      return hasMorgana
+        ? info.description
+        : 'You know who Merlin is. Protect him.';
+    }
+    return info.description;
+  }
   const hasConfirmed   = confirmedRoleReveal.includes(myDeviceId);
   const confirmedCount = confirmedRoleReveal.length;
   // Sort by deviceId so the list order is stable regardless of Firestore object key iteration order
@@ -78,7 +95,10 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
           {/* Role description */}
           <div style={styles.descriptionBox}>
             <p style={styles.descriptionLabel}>YOUR ROLE</p>
-            <p style={styles.description}>{info.description}</p>
+            <p style={styles.description}>{getDescription()}</p>
+            {(myCharacter === 'Merlin' || myCharacter === 'Percival') && (
+              <p style={styles.flavor}>"{info.flavor}"</p>
+            )}
           </div>
 
           {/* Who you can see */}
@@ -150,8 +170,9 @@ const styles: Record<string, React.CSSProperties> = {
   headerLabel: { fontSize: 13, color: COLORS.gold, letterSpacing: '3px', fontWeight: '700', margin: 0 },
   headerHint:  { fontSize: 12, color: COLORS.textSecondary, margin: '2px 0 0 0', fontStyle: 'italic' },
   scrollArea: {
-    flex: 1, overflowY: 'auto', padding: SPACING.md,
+    flex: 1, overflow: 'hidden', padding: SPACING.md,
     display: 'flex', flexDirection: 'column', gap: SPACING.lg,
+    minHeight: 0,
   },
   bottomBar: {
     flexShrink: 0, padding: `${SPACING.md}px ${SPACING.md}px`,
@@ -161,20 +182,21 @@ const styles: Record<string, React.CSSProperties> = {
   cardWrapper: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     padding: SPACING.lg, borderRadius: 20, border: '1px solid',
+    flex: '1 1 0', minHeight: 0, overflow: 'hidden',
   },
   cardFrame: {
     width:        280,
-    height:       420,
+    height:       '100%',
+    minHeight:    120,
     borderRadius: 16,
     overflow:     'hidden',
-    flexShrink:   0,
     border:       '1px solid',
   },
   cardImage: {
     width:          '100%',
     height:         '100%',
-    objectFit:      'cover',
-    objectPosition: 'center top',
+    objectFit:      'contain',
+    objectPosition: 'center',
     display:        'block',
   },
   descriptionBox: {
@@ -183,6 +205,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   descriptionLabel: { fontSize: 11, color: COLORS.textSecondary, letterSpacing: '3px', fontWeight: '700', margin: '0 0 6px 0' },
   description:      { fontSize: 15, color: COLORS.textPrimary, lineHeight: '1.6', margin: 0 },
+  flavor:           { fontSize: 13, color: COLORS.textMuted, lineHeight: '1.6', margin: '8px 0 0 0', fontStyle: 'italic' },
   visionBox: {
     padding: SPACING.md, backgroundColor: 'rgba(22,24,38,0.85)',
     borderRadius: 12, border: `1px solid ${COLORS.border}`,

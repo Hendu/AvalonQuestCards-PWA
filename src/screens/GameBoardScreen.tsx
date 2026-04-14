@@ -621,7 +621,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin:     0,
   },
   creditsContainer: {
-    width:           '90%',
+    width:           '100%',
     backgroundColor: 'rgba(0,0,0,0.92)',
     borderRadius:    8,
     overflow:        'hidden',
@@ -629,7 +629,7 @@ const styles: Record<string, React.CSSProperties> = {
   creditsViewport: {
     height:   180,
     overflow: 'hidden',
-    padding:  '0 24px',
+    padding:  '0 16px',
   },
   creditsTitle: {
     fontSize:      12,
