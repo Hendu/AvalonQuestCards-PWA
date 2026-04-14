@@ -182,7 +182,7 @@ function getInitialState(deviceId: string): GameState {
     phase:               'setup',
     lastQuestResult:     null,
     winner:              null,
-    soundEnabled:        false,
+    soundEnabled:        (function() { try { return localStorage.getItem('avalon_sound') === 'on'; } catch { return false; } })(),
     gameMode:            'local',
     roomCode:            null,
     myDeviceId:          deviceId,
@@ -854,7 +854,6 @@ export function useGameState() {
           totalPlayers: totalPlayers,
           phase:        'lobby',
           isLoading:    false,
-          soundEnabled: true,   // host gets sound on by default; guests default to off
         };
       });
     } catch (error) {
@@ -1082,7 +1081,11 @@ export function useGameState() {
   // ---------------------------------------------------------------------------
 
   function toggleSound(): void {
-    setState(function(prev) { return { ...prev, soundEnabled: !prev.soundEnabled }; });
+    setState(function(prev) {
+      const next = !prev.soundEnabled;
+      try { localStorage.setItem('avalon_sound', next ? 'on' : 'off'); } catch {}
+      return { ...prev, soundEnabled: next };
+    });
   }
 
   function resetGame(): void {

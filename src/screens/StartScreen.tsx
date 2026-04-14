@@ -379,7 +379,7 @@ export default function StartScreen(props: StartScreenProps) {
         </form>
       )}
 
-      <p style={styles.footerText}>© 2013–2026 Ryan Henderson · v4.1.0</p>
+      <p style={styles.footerText}>© 2013–2026 Ryan Henderson · v4.3.3</p>
     </div>
   );
 }
