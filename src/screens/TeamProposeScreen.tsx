@@ -40,6 +40,9 @@ interface TeamProposeScreenProps {
   onSubmitProposal: (deviceIds: string[]) => void;
   onResetGame:      () => void;
   isHost:           boolean;
+  ladyOfTheLakeEnabled: boolean;
+  ladyResult:       { targetDeviceId: string; alignment: 'good' | 'evil' } | null;
+  ladyHistory:      string[];
 }
 
 export default function TeamProposeScreen(props: TeamProposeScreenProps) {
@@ -47,7 +50,15 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
     isLeader, leaderName, players, currentQuest, totalPlayers,
     goodWins, evilWins, questOutcomes, myName, myCharacter,
     proposalCount, isHost, onSubmitProposal, onResetGame,
+    ladyOfTheLakeEnabled, ladyResult, ladyHistory,
   } = props;
+
+  // After investigation: ladyHistory has the investigator as its last entry,
+  // ladyDeviceId is now the target (new token holder), ladyResult has the target.
+  const lastInvestigatorId = ladyHistory.length >= 1 ? ladyHistory[ladyHistory.length - 1] : null;
+  const lastInvestigator   = lastInvestigatorId ? players.find(function(p) { return p.deviceId === lastInvestigatorId; })?.name : null;
+  const lastTarget         = ladyResult ? players.find(function(p) { return p.deviceId === ladyResult.targetDeviceId; })?.name : null;
+  const showLadyBanner     = ladyOfTheLakeEnabled && lastInvestigator && lastTarget;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -87,6 +98,17 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
             <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>
+
+        {/* Lady of the Lake result banner */}
+        {showLadyBanner && (
+          <div style={styles.ladyBanner}>
+            <span style={styles.ladyBannerIcon}>🌊</span>
+            <p style={styles.ladyBannerText}>
+              <span style={styles.ladyBannerLabel}>LADY OF THE LAKE  </span>
+              {lastInvestigator} investigated <strong style={{ color: '#ffffff' }}>{lastTarget}</strong>
+            </p>
+          </div>
+        )}
 
         <div style={styles.scrollArea}>
 
@@ -218,6 +240,33 @@ const styles: Record<string, React.CSSProperties> = {
   },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)' },
   content: { position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column' },
+  ladyBanner: {
+    display:         'flex',
+    alignItems:      'center',
+    gap:             SPACING.sm,
+    padding:         `${SPACING.sm}px ${SPACING.md}px`,
+    backgroundColor: 'rgba(20,50,80,0.95)',
+    borderTop:       '1px solid rgba(100,160,200,0.4)',
+    borderBottom:    '1px solid rgba(100,160,200,0.4)',
+    flexShrink:      0,
+  },
+  ladyBannerIcon: {
+    fontSize:  16,
+    flexShrink: 0,
+  },
+  ladyBannerText: {
+    fontSize:   13,
+    color:      'rgba(180,210,230,0.9)',
+    margin:     0,
+    lineHeight: '1.4',
+  },
+  ladyBannerLabel: {
+    fontSize:      10,
+    color:         'rgba(100,160,200,0.8)',
+    letterSpacing: '2px',
+    fontWeight:    '700',
+    marginRight:   4,
+  },
   topBar: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: `${SPACING.sm}px ${SPACING.md}px`,

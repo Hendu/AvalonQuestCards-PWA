@@ -295,7 +295,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     return (
                       <CreditRow
                         key={deviceId}
-                        left={index === 0 ? 'Loyal Servants' : ''}
+                        left={index === 0 ? (regularServants.length === 1 ? 'Loyal Servant' : 'Loyal Servants') : ''}
                         right={getPlayerName(players, deviceId)}
                       />
                     );

@@ -167,6 +167,9 @@ export default function App() {
           isHost={isHost}
           onSubmitProposal={hostSubmitTeamProposal}
           onResetGame={quitGame}
+          ladyOfTheLakeEnabled={state.ladyOfTheLakeEnabled}
+          ladyResult={state.ladyResult}
+          ladyHistory={state.ladyHistory}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal

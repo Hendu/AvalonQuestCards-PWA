@@ -185,8 +185,6 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
                 if (isSubmitting || !displayTargetId) return;
                 setIsSubmitting(true);
                 onSubmitInvestigation(displayTargetId);
-                // Phase will advance to team-propose on the next Firestore tick.
-                // Screen unmounts naturally; no local cleanup needed.
               }}
               disabled={isSubmitting}
             >
@@ -328,7 +326,18 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
           <div style={styles.holderCard}>
             <p style={styles.holderLabel}>TOKEN HOLDER</p>
             <p style={styles.holderName}>{ladyName}</p>
-            <p style={styles.holderWaiting}>Waiting for {ladyName} to investigate...</p>
+            {ladyResult
+              ? (
+                <p style={styles.holderWaiting}>
+                  {ladyName} investigated{' '}
+                  <strong style={{ color: COLORS.textPrimary }}>
+                    {nameOf(players, ladyResult.targetDeviceId)}
+                  </strong>
+                </p>
+              ) : (
+                <p style={styles.holderWaiting}>Waiting for {ladyName} to investigate...</p>
+              )
+            }
           </div>
 
           {renderLadyHistory()}

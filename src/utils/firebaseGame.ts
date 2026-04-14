@@ -549,10 +549,11 @@ export async function resolveTeamVote(
   // what before proceeding — whether the vote passed OR failed.
   // The results screen reads lastProposalApproved to know where to go next.
   await updateDoc(roomRef, {
-    phase:               'team-vote-results',
-    leaderIndex:         nextLeaderIdx,
-    proposalCount:       newProposalCount,
+    phase:                'team-vote-results',
+    leaderIndex:          nextLeaderIdx,
+    proposalCount:        newProposalCount,
     lastProposalApproved: approved,
+    ladyResult:           null,   // clear LoTL banner once voting commences
   });
 }
 
@@ -737,10 +738,6 @@ export async function advanceToLadyOfTheLake(
 // Writes the result immediately (so a reconnect shows the already-revealed result
 // rather than allowing a re-investigation), appends current holder to ladyHistory,
 // passes the token to the target, and advances to 'team-propose'.
-//
-// currentLadyDeviceId: the player who currently holds the token (making this call).
-// targetDeviceId:      the player they chose to investigate.
-// alignment:           computed client-side from CHARACTERS[characters[targetDeviceId]].alignment
 // -----------------------------------------------------------------------------
 export async function submitLadyResult(
   roomCode:            string,
@@ -749,22 +746,14 @@ export async function submitLadyResult(
   alignment:           'good' | 'evil'
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
-
-  // We need to read the current ladyHistory to append to it atomically.
-  // arrayUnion handles deduplication safely.
   await updateDoc(roomRef, {
-    // Store the result privately -- only the current token holder reads this field.
-    // It's cleared when the phase advances, and on the next advanceToNextQuest.
     ladyResult:   { targetDeviceId, alignment },
-    // Append the current holder to the public history (the target will be added
-    // when THEY investigate, i.e. when they become the new currentLady)
     ladyHistory:  arrayUnion(currentLadyDeviceId),
-    // Hand the token to the investigated player
     ladyDeviceId: targetDeviceId,
-    // Advance the game -- investigation is complete
     phase:        'team-propose',
   });
 }
+
 
 
 // -----------------------------------------------------------------------------
