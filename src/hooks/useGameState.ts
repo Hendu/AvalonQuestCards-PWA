@@ -82,7 +82,10 @@ import {
   pickBotNames,
   botThinkDelay,
   BOT_DELAYS,
+  MissionRecord,
+  VoteRecord,
   computeHeatmap,
+  computeProposalSuspicion,
   decideBotProposal,
   decideBotProposalVote,
   decideBotMissionVote,
@@ -392,6 +395,11 @@ export function useGameState() {
         const evilAutoWin = !result.approved && newCount >= 5;
         const sorted        = getSortedPlayers(s.players);
         const nextLeaderIdx = (s.leaderIndex + 1) % sorted.length;
+        // Capture current leader before index advances — needed for mission record
+        if (result.approved) {
+          const currentLeader = sorted[s.leaderIndex % sorted.length];
+          if (currentLeader) lastApprovedLeaderRef.current = currentLeader.deviceId;
+        }
         resolveTeamVote(s.roomCode!, result.approved, nextLeaderIdx, newCount, evilAutoWin);
       }, 800);
       return function() { clearTimeout(timer); };
@@ -436,18 +444,22 @@ export function useGameState() {
   // where a bot needs to act, waits a role-appropriate delay, then fires the
   // Firestore write on behalf of that bot.
   //
-  // failedMissionTeamsRef: public history of which players were on failed
-  // missions. Used to build the heatmap that all good bots use to reject
-  // suspicious teams. Resets when resetGame() is called.
-  //
-  // merlinRejectRef: per-bot running reject ratio used by Merlin's blending
-  // logic. Key = botDeviceId, value = { rejects, total }.
+  // missionHistoryRef: full history of all completed missions — team, leader,
+  // outcome, quest index. Used for recency-weighted heatmap and proposal suspicion.
+  // merlinRejectRef: per-bot running reject ratio used by Merlin's blending.
   // ---------------------------------------------------------------------------
-  const failedMissionTeamsRef = useRef<string[][]>([]);
-  const merlinRejectRef       = useRef<Record<string, { rejects: number; total: number }>>({});
+  const missionHistoryRef    = useRef<MissionRecord[]>([]);
+  const voteHistoryRef       = useRef<VoteRecord[]>([]);
+  const ladyKnowledgeRef     = useRef<Record<string, Record<string, 'good' | 'evil'>>>({});
+  const merlinRejectRef      = useRef<Record<string, { rejects: number; total: number }>>({});
+  const lastApprovedLeaderRef = useRef<string | null>(null);
 
   function getHeatmap(): Record<string, number> {
-    return computeHeatmap(failedMissionTeamsRef.current);
+    return computeHeatmap(missionHistoryRef.current);
+  }
+
+  function getProposalSuspicion(): Record<string, number> {
+    return computeProposalSuspicion(missionHistoryRef.current);
   }
 
   function getMerlinRejectRatio(botDeviceId: string): number {
@@ -524,7 +536,7 @@ export function useGameState() {
         s.players, heatmap, missionSize
       );
       submitTeamProposal(s.roomCode, proposal);
-    }, botThinkDelay(BOT_DELAYS.proposalVote.min, BOT_DELAYS.proposalVote.max));
+    }, botThinkDelay(BOT_DELAYS.leaderPropose.min, BOT_DELAYS.leaderPropose.max));
 
     return function() { clearTimeout(timer); };
   }, [state.phase, state.leaderIndex, state.botsEnabled, state.isHost]);
@@ -547,7 +559,7 @@ export function useGameState() {
     if (unvoted.length === 0) return;
 
     const timers = unvoted.map(function(bot, idx) {
-      const delay = botThinkDelay(BOT_DELAYS.proposalVote.min, BOT_DELAYS.proposalVote.max) + idx * 400;
+      const delay = botThinkDelay(BOT_DELAYS.proposalVote.min, BOT_DELAYS.proposalVote.max) + idx * 150;
       return setTimeout(function() {
         const s = stateRef.current;
         if (s.phase !== 'team-vote' || !s.roomCode) return;
@@ -555,19 +567,27 @@ export function useGameState() {
         const botChar = s.characters[bot.deviceId];
         if (!botChar) return;
 
-        const heatmap   = getHeatmap();
-        const rejectRatio = getMerlinRejectRatio(bot.deviceId);
-        const approve   = decideBotProposalVote(
+        const heatmap          = getHeatmap();
+        const rejectRatio      = getMerlinRejectRatio(bot.deviceId);
+        const ladyKnow         = ladyKnowledgeRef.current[bot.deviceId] || {};
+        const merlinId         = Object.entries(s.characters).find(function([, c]) { return c === 'Merlin'; })?.[0] ?? null;
+        const propSuspicion    = getProposalSuspicion();
+        const sorted           = getSortedPlayers(s.players);
+        const currentLeader    = sorted[s.leaderIndex % Math.max(sorted.length, 1)];
+        const currentLeaderId  = currentLeader?.deviceId ?? '';
+        const approve          = decideBotProposalVote(
           bot.deviceId, botChar, s.characters,
           s.missionPlayerIds, heatmap,
-          s.proposalCount + 1,   // proposalCount is 0-indexed before submission
-          rejectRatio
+          s.proposalCount + 1,
+          rejectRatio,
+          voteHistoryRef.current,
+          ladyKnow,
+          merlinId,
+          propSuspicion,
+          currentLeaderId
         );
 
-        // Track Merlin's vote for blending
-        if (botChar === 'Merlin') {
-          trackBotVote(bot.deviceId, approve);
-        }
+        if (botChar === 'Merlin') trackBotVote(bot.deviceId, approve);
 
         castProposalVote(s.roomCode!, bot.deviceId, approve);
       }, delay);
@@ -619,13 +639,24 @@ export function useGameState() {
   // BOT: record failed mission teams for the heatmap when results come in
   useEffect(function() {
     if (state.phase !== 'results' || !state.lastQuestResult || !state.botsEnabled) return;
-    if (!state.lastQuestResult.missionPassed) {
-      // Record this failed team so heatmap weights these players higher
-      failedMissionTeamsRef.current = [
-        ...failedMissionTeamsRef.current,
-        [...state.missionPlayerIds],
-      ];
-    }
+    const passed = state.lastQuestResult.missionPassed;
+
+    // Record the completed mission with leader, team, outcome, and quest index
+    const record: MissionRecord = {
+      leaderDeviceId: lastApprovedLeaderRef.current ?? '',
+      teamDeviceIds:  [...state.missionPlayerIds],
+      missionPassed:  passed,
+      questIndex:     state.currentQuest,
+    };
+    missionHistoryRef.current = [...missionHistoryRef.current, record];
+
+    // Record each player's proposal vote alongside the mission outcome
+    const newRecords: VoteRecord[] = Object.entries(state.proposalVotes).map(
+      function([voterId, approved]) {
+        return { voterId, approved, missionPassed: passed };
+      }
+    );
+    voteHistoryRef.current = [...voteHistoryRef.current, ...newRecords];
   }, [state.phase]);
 
 
@@ -666,6 +697,15 @@ export function useGameState() {
       if (!targetChar) return;
       const alignment = CHARACTERS[targetChar].alignment;
 
+      // Record this bot's lady knowledge so it can use it when voting
+      ladyKnowledgeRef.current = {
+        ...ladyKnowledgeRef.current,
+        [botId]: {
+          ...(ladyKnowledgeRef.current[botId] || {}),
+          [targetId]: alignment,
+        },
+      };
+
       submitLadyResult(s.roomCode!, botId, targetId, alignment);
     }, botThinkDelay(BOT_DELAYS.ladyTarget.min, BOT_DELAYS.ladyTarget.max));
 
@@ -697,7 +737,8 @@ export function useGameState() {
         s.characters[assassinBot.deviceId],
         s.characters,
         s.players,
-        heatmap
+        heatmap,
+        voteHistoryRef.current
       );
       const winner = resolveAssassination(targetId, s.characters);
       submitAssassinationTarget(s.roomCode!, targetId, winner);
@@ -1029,7 +1070,7 @@ export function useGameState() {
     const alignment = CHARACTERS[targetCharacter].alignment as 'good' | 'evil';
     await submitLadyResult(
       state.roomCode,
-      state.ladyDeviceId,   // current token holder
+      state.ladyDeviceId,
       targetDeviceId,
       alignment
     );
@@ -1058,9 +1099,12 @@ export function useGameState() {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
-    localVotesRef.current           = [];
-    failedMissionTeamsRef.current   = [];
-    merlinRejectRef.current         = {};
+    localVotesRef.current            = [];
+    missionHistoryRef.current        = [];
+    voteHistoryRef.current           = [];
+    ladyKnowledgeRef.current         = {};
+    merlinRejectRef.current          = {};
+    lastApprovedLeaderRef.current    = null;
     setState(getInitialState(myDeviceId));
   }
 

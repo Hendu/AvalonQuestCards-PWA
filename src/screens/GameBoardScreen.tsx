@@ -78,6 +78,17 @@ function CreditsTrack(props: {
   );
 }
 
+function CreditLogos() {
+  return (
+    <img
+      src="/assets/images/credit_logos.png"
+      style={{ width: '100%', marginTop: 30, marginBottom: 10, display: 'block' }}
+      alt="credit logos"
+    />
+  );
+}
+
+
 export default function GameBoardScreen(props: GameBoardScreenProps) {
   const {
     state, onVote, onAdvanceToNextQuest, onResetVotes,
@@ -239,8 +250,16 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               const servantEntries  = Object.entries(state.characters)
                 .filter(function([, c]) { return c === 'Loyal Servant of Arthur'; })
                 .sort(function([a], [b]) { return a.localeCompare(b); }); // stable order
-              const introServant    = servantEntries.length > 0 ? servantEntries[servantEntries.length - 1] : null;
-              const regularServants = servantEntries.slice(0, servantEntries.length - 1);
+
+              // Prefer a human servant for "Bob" — being Bob is more fun if you're real
+              const humanServants = servantEntries.filter(function([id]) {
+                return !players.find(function(p) { return p.deviceId === id; })?.isBot;
+              });
+              const bobPool      = humanServants.length > 0 ? humanServants : servantEntries;
+              const introServant = bobPool.length > 0 ? bobPool[bobPool.length - 1] : null;
+              const regularServants = servantEntries.filter(function([id]) {
+                return id !== introServant?.[0];
+              });
 
               // Estimate total content height to set scroll duration
               // ~20px per cast row, ~12px spacer, ~28px section label
@@ -299,7 +318,8 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                   {productionCredits.map(function(credit) {
                     return <CreditRow key={credit.role} left={credit.role} right={credit.name} />;
                   })}
-                  <div style={styles.creditsSpacer} />
+                  {/* Fake industry logos */}
+                  <CreditLogos />
                   <p style={styles.creditsCopyright}>© MMXXVI Ryan Henderson. All Rights Reserved.</p>
                   <div style={{ height: 30 }} />
                 </div>
@@ -654,7 +674,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize:      10,
     color:         '#999999',
     textAlign:     'center',
-    margin:        '0',
+    margin:        '2px 0 0 0',
     letterSpacing: '0.5px',
   },
   creditsSectionLabel: {
