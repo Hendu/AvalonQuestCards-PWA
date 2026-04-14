@@ -19,7 +19,7 @@
 import React, { useState } from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName, getMissionSize, getFailsRequired, CHARACTERS } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import QuitButton from '../components/QuitButton';
 import QuestTracker from '../components/QuestTracker';
 import CharacterBadge from '../components/CharacterBadge';
@@ -223,7 +223,7 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
               PROPOSE THIS TEAM →
             </button>
           ) : (
-            <p style={styles.guestNote}>
+            <p style={{ ...styles.guestNote, ...WAITING_PULSE_STYLE }}>
               ⏳ Waiting for <strong style={{ color: COLORS.gold }}>{leaderName}</strong> to propose a team...
             </p>
           )}

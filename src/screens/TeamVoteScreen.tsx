@@ -18,7 +18,7 @@
 import React from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
@@ -136,7 +136,7 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
           ) : (
             <div style={styles.votedBox}>
               <p style={styles.votedText}>✓ Your vote is cast</p>
-              <p style={styles.votedHint}>Waiting for others...</p>
+              <p style={{ ...styles.votedHint, ...WAITING_PULSE_STYLE }}>Waiting for others...</p>
             </div>
           )}
         </div>

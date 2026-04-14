@@ -22,7 +22,7 @@ import { Player } from '../utils/firebaseGame';
 import QuestTracker from '../components/QuestTracker';
 import VoteCards    from '../components/VoteCards';
 import VoteResults  from '../components/VoteResults';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
@@ -277,7 +277,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
 
               const viewportHeight = 180;
               const onePassHeight  = estimatedHeight + 30;
-              const pxPerSec       = 35;   // cinematic credits speed
+              const pxPerSec       = 28;   // cinematic credits speed
               // Both phases scroll at the same px/s rate
               const introDuration  = viewportHeight / pxPerSec;
               const loopDuration   = onePassHeight  / pxPerSec;
@@ -456,14 +456,13 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
 
                   {/* NETWORK MODE -- I AM on the mission and HAVE voted */}
                   {gameMode === 'network' && amIOnMission && haveIVoted && (
-                    <p style={styles.votedText}>
+                    <p style={{ ...styles.votedText, ...WAITING_PULSE_STYLE }}>
                       ✓ Your vote is in. Waiting for others...
                     </p>
                   )}
 
-                  {/* NETWORK MODE -- I am NOT on the mission */}
                   {gameMode === 'network' && !amIOnMission && (
-                    <p style={styles.notOnMissionText}>
+                    <p style={{ ...styles.notOnMissionText, ...WAITING_PULSE_STYLE }}>
                       You are not on this mission. Waiting for results...
                     </p>
                   )}
@@ -560,7 +559,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 </button>
               )}
               {phase === 'results' && gameMode === 'network' && !isHost && (
-                <p style={styles.guestNote}>⏳ Waiting for host to continue...</p>
+                <p style={{ ...styles.guestNote, ...WAITING_PULSE_STYLE }}>⏳ Waiting for host to continue...</p>
               )}
             </div>
           </div>

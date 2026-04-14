@@ -14,7 +14,7 @@ import {
   getCharacterVision,
 } from '../utils/gameLogic';
 import { Player } from '../utils/firebaseGame';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 
 interface RoleRevealScreenProps {
   myCharacter:         CharacterName;
@@ -145,7 +145,7 @@ export default function RoleRevealScreen(props: RoleRevealScreenProps) {
                   width: `${(confirmedCount / totalPlayers) * 100}%`,
                 }} />
               </div>
-              <p style={styles.waitingHint}>Waiting for others to confirm their role...</p>
+              <p style={{ ...styles.waitingHint, ...WAITING_PULSE_STYLE }}>Waiting for others to confirm their role...</p>
             </div>
           )}
         </div>

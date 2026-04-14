@@ -18,7 +18,7 @@
 import React from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
@@ -144,7 +144,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
               {approved ? 'PROCEED TO MISSION →' : 'BACK TO PROPOSALS →'}
             </button>
           ) : (
-            <p style={styles.guestWaiting}>
+            <p style={{ ...styles.guestWaiting, ...WAITING_PULSE_STYLE }}>
               ⏳ Waiting for host to continue...
             </p>
           )}

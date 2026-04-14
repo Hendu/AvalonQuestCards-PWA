@@ -25,7 +25,7 @@
 import React, { useState } from 'react';
 import { Player, PendingDisconnect } from '../utils/firebaseGame';
 import { CharacterName, CHARACTERS } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import CharacterBadge      from '../components/CharacterBadge';
 import DisconnectWaitModal from '../components/DisconnectWaitModal';
 
@@ -335,7 +335,7 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
                   </strong>
                 </p>
               ) : (
-                <p style={styles.holderWaiting}>Waiting for {ladyName} to investigate...</p>
+                <p style={{ ...styles.holderWaiting, ...WAITING_PULSE_STYLE }}>Waiting for {ladyName} to investigate...</p>
               )
             }
           </div>

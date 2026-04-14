@@ -19,7 +19,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { PendingDisconnect } from '../utils/firebaseGame';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 
 const WAIT_SECONDS = 30;
 
@@ -85,7 +85,7 @@ export default function DisconnectWaitModal(props: DisconnectWaitModalProps) {
         {!disconnectedPlayerIsHost && (
           <p style={styles.playerName}>{pendingDisconnect.name}</p>
         )}
-        <p style={styles.subtitle}>{getSubtitle()}</p>
+        <p style={{ ...styles.subtitle, ...WAITING_PULSE_STYLE }}>{getSubtitle()}</p>
 
         {/* Countdown + Wait Longer / End Game -- shown to all deciders */}
         {iAmDecider && (

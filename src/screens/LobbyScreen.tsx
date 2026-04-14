@@ -23,7 +23,7 @@ import {
   getEvilCount,
   getGoodCount,
 } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 
 interface LobbyScreenProps {
   roomCode:              string;
@@ -440,7 +440,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
               {Array.from({ length: totalPlayers - players.length }).map(function(_, i) {
                 return (
                   <div key={`empty-${i}`} style={{ ...styles.playerRow, ...styles.playerRowEmpty }}>
-                    <span style={styles.playerNameEmpty}>Waiting...</span>
+                    <span style={{ ...styles.playerNameEmpty, ...WAITING_PULSE_STYLE }}>Waiting...</span>
                   </div>
                 );
               })}
@@ -674,6 +674,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             color: players.length < totalPlayers
               ? COLORS.textMuted
               : canStart ? COLORS.good : COLORS.textSecondary,
+            ...(players.length < totalPlayers || !canStart ? WAITING_PULSE_STYLE : {}),
           }}>
             {players.length < totalPlayers
               ? `⏳ Waiting for ${totalPlayers - players.length} more player${totalPlayers - players.length !== 1 ? 's' : ''} to join...`

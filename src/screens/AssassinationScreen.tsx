@@ -20,7 +20,7 @@
 import React, { useState } from 'react';
 import { Player } from '../utils/firebaseGame';
 import { CharacterName, CHARACTERS } from '../utils/gameLogic';
-import { COLORS, SPACING } from '../utils/theme';
+import { COLORS, SPACING, WAITING_PULSE_STYLE } from '../utils/theme';
 import QuitButton from '../components/QuitButton';
 import CharacterBadge from '../components/CharacterBadge';
 
@@ -169,7 +169,7 @@ export default function AssassinationScreen(props: AssassinationScreenProps) {
               ASSASSINATE →
             </button>
           ) : (
-            <p style={styles.waitingBottomText}>
+            <p style={{ ...styles.waitingBottomText, ...WAITING_PULSE_STYLE }}>
               🗡️ Waiting for <strong style={{ color: COLORS.evil }}>{assassinName}</strong> to strike...
             </p>
           )}

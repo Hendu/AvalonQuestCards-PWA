@@ -5,6 +5,8 @@
 // In web we use these as CSS values directly in style objects or CSS strings.
 // =============================================================================
 
+import type React from 'react';
+
 export const COLORS = {
   bgDark:        '#0D0F1A',
   bgCard:        '#161826',
@@ -49,4 +51,18 @@ export const SHADOWS = {
   text:      'text-shadow: 0 2px 8px rgba(0,0,0,0.8)',
   textLight: 'text-shadow: 0 1px 4px rgba(0,0,0,0.6)',
   box:       'box-shadow: 0 4px 16px rgba(0,0,0,0.4)',
+};
+
+// Pulsing animation for all "Waiting..." text across the app.
+// Inject WAITING_PULSE_KEYFRAMES once (e.g. in index.tsx or a top-level style tag),
+// then apply WAITING_PULSE_STYLE inline to any element showing waiting copy.
+export const WAITING_PULSE_KEYFRAMES = `
+  @keyframes waitingPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.35; }
+  }
+`;
+
+export const WAITING_PULSE_STYLE: React.CSSProperties = {
+  animation: 'waitingPulse 2.4s ease-in-out infinite',
 };
