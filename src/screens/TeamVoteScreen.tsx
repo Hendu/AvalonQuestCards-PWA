@@ -39,6 +39,7 @@ interface TeamVoteScreenProps {
   isHost:               boolean;
   soundEnabled:         boolean;
   onToggleSound:        () => void;
+  leaderDeviceId:       string;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -52,6 +53,7 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
     myDeviceId, myCharacter, myName,
     leaderName, currentQuest, proposalCount, totalPlayers,
     haveICastProposalVote, isHost, onVote, onResetGame, soundEnabled, onToggleSound,
+    leaderDeviceId,
   } = props;
 
   const votesIn  = Object.keys(proposalVotes).length;
@@ -86,10 +88,11 @@ export default function TeamVoteScreen(props: TeamVoteScreenProps) {
           {/* Proposed team */}
           <div style={styles.teamBox}>
             <p style={styles.teamLabel}>PROPOSED TEAM</p>
-            {missionPlayerNames.map(function(name) {
+            {missionPlayerIds.map(function(id) {
+              const name = getPlayerName(players, id);
               return (
-                <div key={name} style={styles.teamMemberRow}>
-                  <span style={styles.teamMemberName}>{name}</span>
+                <div key={id} style={styles.teamMemberRow}>
+                  <span style={styles.teamMemberName}>{name}{id === leaderDeviceId ? ' 👑' : ''}</span>
                   <span style={styles.teamMemberBadge}>⚔️</span>
                 </div>
               );

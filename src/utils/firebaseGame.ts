@@ -104,6 +104,9 @@ export interface RoomData {
   // v4.1.1: Team vote results always shown; this flag tells the results screen
   // whether to proceed to mission voting (true) or back to team-propose (false)
   lastProposalApproved: boolean;
+
+  // v4.3.3: randomised leader order — shuffled array of deviceIds set at game start
+  leaderOrder:          string[];
 }
 
 
@@ -156,6 +159,7 @@ export async function createRoom(
     ladyResult:           null,
     botsEnabled:          false,
     lastProposalApproved: false,
+    leaderOrder:          [],
   };
 
   await setDoc(roomRef, initialData);
@@ -447,15 +451,16 @@ export async function startGame(
   roomCode:       string,
   characters:     Record<string, CharacterName>,
   availableChars: CharacterName[],
-  initialLadyId:  string | null    // v4: randomly chosen initial token holder (null if LoTL off)
+  initialLadyId:  string | null,
+  leaderOrder:    string[]          // v4.3.3: shuffled deviceId array for random leader rotation
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
   await updateDoc(roomRef, {
     characters:          characters,
     availableCharacters: availableChars,
     leaderIndex:         0,
+    leaderOrder:         leaderOrder,
     proposalCount:       0,
-    // v4: seed initial lady token holder; history starts with just her
     ladyDeviceId:        initialLadyId,
     ladyHistory:         initialLadyId ? [initialLadyId] : [],
     ladyResult:          null,

@@ -139,6 +139,7 @@ export interface GameState {
 
   // v3: Leader / proposal data
   leaderIndex:         number;
+  leaderOrder:         string[];   // v4.3.3: shuffled deviceId array for leader rotation
   proposalVotes:       Record<string, boolean>;
   proposalCount:       number;
   assassinTarget:      string | null;
@@ -199,6 +200,7 @@ function getInitialState(deviceId: string): GameState {
     availableCharacters: [],
     confirmedRoleReveal: [],
     leaderIndex:         0,
+    leaderOrder:         [],
     proposalVotes:       {},
     proposalCount:       0,
     assassinTarget:      null,
@@ -228,6 +230,16 @@ function getInitialState(deviceId: string): GameState {
 
 function getSortedPlayers(players: Player[]): Player[] {
   return [...players].sort(function(a, b) { return a.joinedAt - b.joinedAt; });
+}
+
+// Returns the deviceId of the current leader using the randomised leaderOrder.
+// Falls back to joinedAt sort if leaderOrder isn't populated yet (e.g. local mode).
+function getLeaderDeviceId(players: Player[], leaderOrder: string[], leaderIndex: number): string | null {
+  if (leaderOrder.length > 0) {
+    return leaderOrder[leaderIndex % leaderOrder.length] ?? null;
+  }
+  const sorted = getSortedPlayers(players);
+  return sorted[leaderIndex % Math.max(sorted.length, 1)]?.deviceId ?? null;
 }
 
 
@@ -390,15 +402,15 @@ export function useGameState() {
       const timer = setTimeout(function() {
         const s = stateRef.current;
         if (!s.allProposalVotesIn || s.phase !== 'team-vote' || !s.isHost || s.pendingDisconnect) return;
-        const result      = evaluateProposalVotes(s.proposalVotes);
-        const newCount    = s.proposalCount + 1;
-        const evilAutoWin = !result.approved && newCount >= 5;
-        const sorted        = getSortedPlayers(s.players);
-        const nextLeaderIdx = (s.leaderIndex + 1) % sorted.length;
+        const result        = evaluateProposalVotes(s.proposalVotes);
+        const newCount      = s.proposalCount + 1;
+        const evilAutoWin   = !result.approved && newCount >= 5;
+        const orderLen      = s.leaderOrder.length > 0 ? s.leaderOrder.length : getSortedPlayers(s.players).length;
+        const nextLeaderIdx = (s.leaderIndex + 1) % Math.max(orderLen, 1);
         // Capture current leader before index advances — needed for mission record
         if (result.approved) {
-          const currentLeader = sorted[s.leaderIndex % sorted.length];
-          if (currentLeader) lastApprovedLeaderRef.current = currentLeader.deviceId;
+          const currentLeaderId = getLeaderDeviceId(s.players, s.leaderOrder, s.leaderIndex);
+          if (currentLeaderId) lastApprovedLeaderRef.current = currentLeaderId;
         }
         resolveTeamVote(s.roomCode!, result.approved, nextLeaderIdx, newCount, evilAutoWin);
       }, 800);
@@ -518,9 +530,8 @@ export function useGameState() {
       state.pendingDisconnect
     ) return;
 
-    const sortedPlayers = getSortedPlayers(state.players);
-    const safeIdx       = state.leaderIndex % Math.max(sortedPlayers.length, 1);
-    const leader        = sortedPlayers[safeIdx];
+    const leaderDeviceId = getLeaderDeviceId(state.players, state.leaderOrder, state.leaderIndex);
+    const leader         = state.players.find(function(p) { return p.deviceId === leaderDeviceId; });
     if (!leader || !isBotDeviceId(leader.deviceId)) return;
 
     const missionSize = getMissionSize(state.totalPlayers, state.currentQuest);
@@ -572,9 +583,7 @@ export function useGameState() {
         const ladyKnow         = ladyKnowledgeRef.current[bot.deviceId] || {};
         const merlinId         = Object.entries(s.characters).find(function([, c]) { return c === 'Merlin'; })?.[0] ?? null;
         const propSuspicion    = getProposalSuspicion();
-        const sorted           = getSortedPlayers(s.players);
-        const currentLeader    = sorted[s.leaderIndex % Math.max(sorted.length, 1)];
-        const currentLeaderId  = currentLeader?.deviceId ?? '';
+        const currentLeaderId  = getLeaderDeviceId(s.players, s.leaderOrder, s.leaderIndex) ?? '';
         const approve          = decideBotProposalVote(
           bot.deviceId, botChar, s.characters,
           s.missionPlayerIds, heatmap,
@@ -917,7 +926,10 @@ export function useGameState() {
       initialLadyId  = shuffled[0];
     }
 
-    await startGame(state.roomCode, assignment, state.availableCharacters, initialLadyId);
+    // v4.3.3: shuffle player order for random leader rotation
+    const leaderOrder = shuffleArray([...deviceIds]);
+
+    await startGame(state.roomCode, assignment, state.availableCharacters, initialLadyId, leaderOrder);
   }
 
   async function hostSubmitTeamProposal(selectedDeviceIds: string[]): Promise<void> {
@@ -1188,9 +1200,10 @@ export function useGameState() {
     }
 
     // Normal update -- map all Firestore fields into local state
-    const sortedPlayers  = getSortedPlayers(data.players);
-    const safeLeaderIdx  = data.leaderIndex % Math.max(sortedPlayers.length, 1);
-    const leaderDeviceId = sortedPlayers[safeLeaderIdx]?.deviceId ?? '';
+    const leaderOrder    = data.leaderOrder || [];
+    const leaderDeviceId = leaderOrder.length > 0
+      ? leaderOrder[data.leaderIndex % leaderOrder.length] ?? ''
+      : getSortedPlayers(data.players)[data.leaderIndex % Math.max(data.players.length, 1)]?.deviceId ?? '';
 
     const myCharacter = data.characters[myDeviceId] ?? null;
     const amILeader   = leaderDeviceId === myDeviceId;
@@ -1246,6 +1259,7 @@ export function useGameState() {
         availableCharacters:   data.availableCharacters || [],
         confirmedRoleReveal:   data.confirmedRoleReveal || [],
         leaderIndex:           data.leaderIndex,
+        leaderOrder:           data.leaderOrder || [],
         proposalVotes:         data.proposalVotes || {},
         proposalCount:         data.proposalCount,
         assassinTarget:        data.assassinTarget,

@@ -35,6 +35,7 @@ interface TeamVoteResultsScreenProps {
   onResetGame:      () => void;
   soundEnabled:     boolean;
   onToggleSound:    () => void;
+  leaderDeviceId:   string;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -46,7 +47,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
   const {
     players, proposalVotes, missionPlayerIds, myCharacter,
     isHost, approveCount, rejectCount, approved, onContinue, onResetGame,
-    soundEnabled, onToggleSound,
+    soundEnabled, onToggleSound, leaderDeviceId,
   } = props;
 
   const total = approveCount + rejectCount;
@@ -98,10 +99,11 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
             <p style={styles.missionTeamLabel}>
               {approved ? 'GOING ON THE MISSION' : 'REJECTED TEAM'}
             </p>
-            {missionPlayerNames.map(function(name) {
+            {missionPlayerIds.map(function(id) {
+              const name = getPlayerName(players, id);
               return (
-                <div key={name} style={styles.missionMemberRow}>
-                  <span style={styles.missionMemberName}>{name}</span>
+                <div key={id} style={styles.missionMemberRow}>
+                  <span style={styles.missionMemberName}>{name}{id === leaderDeviceId ? ' 👑' : ''}</span>
                   <span style={styles.missionMemberIcon}>{approved ? '⚔️' : '✕'}</span>
                 </div>
               );
@@ -118,7 +120,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
               const pending      = vote === undefined;
               return (
                 <div key={player.deviceId} style={styles.voteRow}>
-                  <span style={styles.voteName}>{player.name}</span>
+                  <span style={styles.voteName}>{player.name}{player.deviceId === leaderDeviceId ? ' 👑' : ''}</span>
                   <div style={styles.voteTokenWrapper}>
                     <span style={{
                       ...styles.voteLabel,

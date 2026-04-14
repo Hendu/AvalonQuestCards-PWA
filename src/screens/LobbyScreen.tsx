@@ -436,9 +436,6 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                     <span style={{ ...styles.playerName, ...(isMe ? styles.playerNameMe : {}) }}>
                       {player.name}{isMe ? ' (you)' : ''}
                     </span>
-                    {player.deviceId === players[0]?.deviceId && (
-                      <span style={styles.hostBadge}>👑 Host</span>
-                    )}
                   </div>
                 );
               })}

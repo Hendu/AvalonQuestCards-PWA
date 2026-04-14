@@ -153,10 +153,11 @@ export default function App() {
   // Team proposal
   // ---------------------------------------------------------------------------
   if (phase === 'team-propose') {
-    const sortedPlayers  = [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; });
-    const safeLeaderIdx  = state.leaderIndex % Math.max(sortedPlayers.length, 1);
-    const leaderPlayer   = sortedPlayers[safeLeaderIdx];
-    const leaderName     = leaderPlayer ? leaderPlayer.name : 'Unknown';
+    const leaderDeviceId = state.leaderOrder.length > 0
+      ? state.leaderOrder[state.leaderIndex % state.leaderOrder.length]
+      : [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[state.leaderIndex % Math.max(state.players.length, 1)]?.deviceId;
+    const leaderPlayer   = state.players.find(function(p) { return p.deviceId === leaderDeviceId; });
+    const leaderName     = leaderPlayer ? '👑 ' + leaderPlayer.name : 'Unknown';
 
     return (
       <>
@@ -180,6 +181,7 @@ export default function App() {
           ladyHistory={state.ladyHistory}
           soundEnabled={state.soundEnabled}
           onToggleSound={toggleSound}
+          leaderDeviceId={leaderDeviceId ?? ''}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -198,10 +200,11 @@ export default function App() {
   // Team vote
   // ---------------------------------------------------------------------------
   if (phase === 'team-vote') {
-    const sortedPlayers = [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; });
-    const safeLeaderIdx = state.leaderIndex % Math.max(sortedPlayers.length, 1);
-    const leaderPlayer  = sortedPlayers[safeLeaderIdx];
-    const leaderName    = leaderPlayer ? leaderPlayer.name : 'Unknown';
+    const leaderDeviceId = state.leaderOrder.length > 0
+      ? state.leaderOrder[state.leaderIndex % state.leaderOrder.length]
+      : [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[state.leaderIndex % Math.max(state.players.length, 1)]?.deviceId;
+    const leaderPlayer  = state.players.find(function(p) { return p.deviceId === leaderDeviceId; });
+    const leaderName    = leaderPlayer ? '👑 ' + leaderPlayer.name : 'Unknown';
 
     return (
       <>
@@ -222,6 +225,7 @@ export default function App() {
           onResetGame={quitGame}
           soundEnabled={state.soundEnabled}
           onToggleSound={toggleSound}
+          leaderDeviceId={leaderDeviceId ?? ''}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -240,6 +244,12 @@ export default function App() {
   // Team vote results
   // ---------------------------------------------------------------------------
   if (phase === 'team-vote-results') {
+    // leaderIndex has already advanced — the proposing leader was one step back
+    const orderLen          = state.leaderOrder.length > 0 ? state.leaderOrder.length : state.players.length;
+    const proposerIdx       = (state.leaderIndex - 1 + orderLen) % Math.max(orderLen, 1);
+    const proposerDeviceId  = state.leaderOrder.length > 0
+      ? state.leaderOrder[proposerIdx] ?? ''
+      : [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[proposerIdx]?.deviceId ?? '';
     const result = evaluateProposalVotes(state.proposalVotes);
 
     return (
@@ -257,6 +267,7 @@ export default function App() {
           onResetGame={quitGame}
           soundEnabled={state.soundEnabled}
           onToggleSound={toggleSound}
+          leaderDeviceId={proposerDeviceId}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal

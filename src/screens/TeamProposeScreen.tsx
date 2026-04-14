@@ -45,6 +45,7 @@ interface TeamProposeScreenProps {
   ladyHistory:      string[];
   soundEnabled:     boolean;
   onToggleSound:    () => void;
+  leaderDeviceId:   string;
 }
 
 export default function TeamProposeScreen(props: TeamProposeScreenProps) {
@@ -53,7 +54,7 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
     goodWins, evilWins, questOutcomes, myName, myCharacter,
     proposalCount, isHost, onSubmitProposal, onResetGame,
     ladyOfTheLakeEnabled, ladyResult, ladyHistory,
-    soundEnabled, onToggleSound,
+    soundEnabled, onToggleSound, leaderDeviceId,
   } = props;
 
   // After investigation: ladyHistory has the investigator as its last entry,
@@ -192,7 +193,7 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
                         ...styles.playerName,
                         ...(isSelected ? styles.playerNameSelected : {}),
                       }}>
-                        {player.name}
+                        {player.name}{player.deviceId === leaderDeviceId ? ' 👑' : ''}
                       </span>
                       {isSelected && <span style={styles.checkmark}>✓</span>}
                     </button>
