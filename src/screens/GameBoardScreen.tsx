@@ -449,36 +449,35 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     />
                   )}
 
-                  {/* NETWORK MODE -- I AM on the mission and haven't voted */}
+                  {/* NETWORK VOTER (not yet voted) — just the prompt, indicators move to bottomBar */}
                   {gameMode === 'network' && amIOnMission && !haveIVoted && (
                     <p style={styles.yourTurnText}>🗡️ You are on this mission — vote secretly</p>
                   )}
 
-                  {/* NETWORK MODE -- I AM on the mission and HAVE voted */}
+                  {/* NETWORK VOTER (voted) — just the waiting text, indicators move to bottomBar */}
                   {gameMode === 'network' && amIOnMission && haveIVoted && (
                     <p style={{ ...styles.votedText, ...WAITING_PULSE_STYLE }}>
                       ✓ Your vote is in. Waiting for others...
                     </p>
                   )}
 
+                  {/* NETWORK SPECTATOR — full progress shown here in scrollArea */}
                   {gameMode === 'network' && !amIOnMission && (
-                    <p style={{ ...styles.notOnMissionText, ...WAITING_PULSE_STYLE }}>
-                      You are not on this mission. Waiting for results...
-                    </p>
-                  )}
-
-                  {/* Vote progress -- shown in network mode for everyone */}
-                  {gameMode === 'network' && (
-                    <div style={styles.voteProgress}>
-                      <p style={styles.voteProgressText}>
-                        {votesIn} of {missionSize} votes cast
+                    <>
+                      <p style={{ ...styles.notOnMissionText, ...WAITING_PULSE_STYLE }}>
+                        You are not on this mission. Waiting for results...
                       </p>
-                      <VoteResults
-                        votes={voteResults}
-                        totalSlots={missionSize}
-                        isRevealed={false}
-                      />
-                    </div>
+                      <div style={styles.voteProgress}>
+                        <p style={styles.voteProgressText}>
+                          {votesIn} of {missionSize} votes cast
+                        </p>
+                        <VoteResults
+                          votes={voteResults}
+                          totalSlots={missionSize}
+                          isRevealed={false}
+                        />
+                      </div>
+                    </>
                   )}
 
                   {/* Results reveal automatically when all votes are in */}
@@ -542,6 +541,31 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                       RESET VOTES
                     </span>
                   </button>
+                </>
+              )}
+              {/* NETWORK: vote progress indicators in bottomBar for voters */}
+              {phase === 'voting' && gameMode === 'network' && amIOnMission && (
+                <>
+                  <div style={styles.voterProgressBlock}>
+                    {/* Simple dots — card backs are visible below, dots avoid confusion */}
+                    <div style={styles.voteDots}>
+                      {Array.from({ length: missionSize }).map(function(_, i) {
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              ...styles.voteDot,
+                              backgroundColor: i < votesIn ? COLORS.gold : 'rgba(42,45,69,0.5)',
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p style={styles.voteProgressText}>
+                      {votesIn} of {missionSize} votes cast
+                    </p>
+                  </div>
+                  <div style={styles.voterDivider} />
                 </>
               )}
               {/* NETWORK: vote cards for mission players who haven't voted */}
@@ -860,6 +884,30 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     margin:    0,
     padding:   SPACING.lg,
+  },
+  voteDots: {
+    display:    'flex',
+    flexDirection: 'row',
+    gap:        10,
+    alignItems: 'center',
+  },
+  voteDot: {
+    width:        14,
+    height:       14,
+    borderRadius: '50%',
+    transition:   'background-color 0.3s ease',
+  },
+  voterProgressBlock: {
+    display:        'flex',
+    flexDirection:  'column',
+    alignItems:     'center',
+    gap:            SPACING.sm,
+    width:          '100%',
+  },
+  voterDivider: {
+    width:           '80%',
+    height:          1,
+    backgroundColor: 'rgba(42,45,69,0.6)',
   },
   voteProgress: {
     display:        'flex',
