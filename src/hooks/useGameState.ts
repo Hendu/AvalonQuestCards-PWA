@@ -541,10 +541,11 @@ export function useGameState() {
     const timer = setTimeout(function() {
       const s = stateRef.current;
       if (s.phase !== 'team-propose' || !s.roomCode) return;
-      const heatmap  = getHeatmap();
-      const proposal = decideBotProposal(
+      const heatmap    = getHeatmap();
+      const ladyKnow   = ladyKnowledgeRef.current[leader.deviceId] || {};
+      const proposal   = decideBotProposal(
         leader.deviceId, leaderChar, s.characters,
-        s.players, heatmap, missionSize
+        s.players, heatmap, missionSize, ladyKnow
       );
       submitTeamProposal(s.roomCode, proposal);
     }, botThinkDelay(BOT_DELAYS.leaderPropose.min, BOT_DELAYS.leaderPropose.max));

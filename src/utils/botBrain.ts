@@ -353,6 +353,41 @@ export function decideBotProposalVote(
     return Math.random() < noise ? !hasAlly : hasAlly;
   }
 
+  // ---------------------------------------------------------------------------
+  // PROPOSER SELF-CONSISTENCY
+  // If this bot proposed the team, it should almost always approve its own work.
+  // Only override if LoTL has confirmed someone evil is on it (hard evidence),
+  // or if a team member is extremely hot (last two failed missions) AND
+  // the bot did NOT put itself on the team (unlikely to self-sabotage).
+  // ---------------------------------------------------------------------------
+  const iAmProposer = myDeviceId === currentLeaderId;
+  if (iAmProposer) {
+    // Hard override: LoTL confirmed evil on team — even proposer should pull back
+    const hasConfirmedEvil = missionPlayerIds.some(function(id) {
+      return (ladyKnowledge[id] === 'evil');
+    });
+    if (hasConfirmedEvil) {
+      // Proposer got new LoTL info after proposing — 60% chance they reconsider
+      return Math.random() > 0.60;
+    }
+
+    // Soft override: very high heat on team members they didn't put themselves on
+    const iAmOnTeam = missionPlayerIds.includes(myDeviceId);
+    const otherHeat = missionPlayerIds
+      .filter(function(id) { return id !== myDeviceId; })
+      .reduce(function(sum, id) { return sum + (heatmap[id] || 0); }, 0) /
+      Math.max(missionPlayerIds.length - (iAmOnTeam ? 1 : 0), 1);
+
+    if (otherHeat >= 0.7 && !iAmOnTeam) {
+      // Teammate looks really bad and proposer isn't personally invested — 25% reconsider
+      return Math.random() > 0.25;
+    }
+
+    // Otherwise: proposers back their own teams strongly
+    // 4% noise flip, otherwise approve
+    return Math.random() > 0.04;
+  }
+
   // Vote-based suspicion — available to all good bots
   const voteSuspicion = computeVoteSuspicion(voteHistory);
 
