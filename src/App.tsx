@@ -58,6 +58,7 @@ export default function App() {
 
   const { phase, gameMode, isHost } = state;
 
+
   // Derive whether the disconnected player is the host (index 0 by joinedAt)
   const hostDeviceId = [...state.players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[0]?.deviceId;
   const disconnectedPlayerIsHost = !!(
@@ -145,7 +146,7 @@ export default function App() {
             onGuestLeave={quitGame}
           />
         )}
-      </>
+    </>
     );
   }
 
@@ -182,6 +183,8 @@ export default function App() {
           soundEnabled={state.soundEnabled}
           onToggleSound={toggleSound}
           leaderDeviceId={leaderDeviceId ?? ''}
+          characters={state.characters}
+          myDeviceId={state.myDeviceId}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -192,7 +195,7 @@ export default function App() {
             onGuestLeave={quitGame}
           />
         )}
-      </>
+    </>
     );
   }
 
@@ -226,6 +229,7 @@ export default function App() {
           soundEnabled={state.soundEnabled}
           onToggleSound={toggleSound}
           leaderDeviceId={leaderDeviceId ?? ''}
+          characters={state.characters}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -240,8 +244,6 @@ export default function App() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Team vote results
   // ---------------------------------------------------------------------------
   if (phase === 'team-vote-results') {
     // leaderIndex has already advanced — the proposing leader was one step back
@@ -268,6 +270,8 @@ export default function App() {
           soundEnabled={state.soundEnabled}
           onToggleSound={toggleSound}
           leaderDeviceId={proposerDeviceId}
+          characters={state.characters}
+          myDeviceId={state.myDeviceId}
         />
         {state.pendingDisconnect && (
           <DisconnectWaitModal
@@ -278,7 +282,7 @@ export default function App() {
             onGuestLeave={quitGame}
           />
         )}
-      </>
+    </>
     );
   }
 
@@ -337,7 +341,7 @@ export default function App() {
             onGuestLeave={quitGame}
           />
         )}
-      </>
+    </>
     );
   }
 
@@ -387,3 +391,4 @@ const loadingStyle: React.CSSProperties = {
   justifyContent:  'center',
   backgroundColor: '#0d0f1a',
 };
+

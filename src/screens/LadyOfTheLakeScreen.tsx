@@ -145,7 +145,7 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
             <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
             <span style={styles.topBarTitle}>LADY OF THE LAKE</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {myCharacter && <CharacterBadge character={myCharacter} />}
+              {myCharacter && <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />}
               <QuitButton onConfirm={onResetGame} isHost={isHost} />
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
             <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
             <span style={styles.topBarTitle}>LADY OF THE LAKE</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {myCharacter && <CharacterBadge character={myCharacter} />}
+              {myCharacter && <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />}
               <QuitButton onConfirm={onResetGame} isHost={isHost} />
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function LadyOfTheLakeScreen(props: LadyOfTheLakeScreenProps) {
           <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>LADY OF THE LAKE</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {myCharacter && <CharacterBadge character={myCharacter} />}
+            {myCharacter && <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />}
             <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>

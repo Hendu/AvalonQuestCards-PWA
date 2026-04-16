@@ -499,21 +499,23 @@ export function decideBotProposalVote(
     }
 
     // Merlin not on team.
+    // Round 1, proposal 1: mirror Servant — no history to justify aggression,
+    // and always-rejecting-without-Merlin is a tell.
+    if (proposalCount === 1 && voteHistory.length === 0) {
+      const iAmOnTeam = missionPlayerIds.includes(myDeviceId);
+      return Math.random() > (iAmOnTeam ? 0.25 : 0.42);
+    }
+
     // DECOY LOGIC: Percival mirrors Merlin's reject pattern deliberately
     // to make himself look like an information-holder to the Assassin.
-    // He checks Merlin's recent votes and tries to match the pattern.
     if (merlinId && voteHistory.length >= 3) {
       const merlinVotes      = voteHistory.filter(function(r) { return r.voterId === merlinId; });
       const merlinRejectRate = merlinVotes.length > 0
         ? merlinVotes.filter(function(r) { return !r.approved; }).length / merlinVotes.length
         : 0;
 
-      // Percival targets a reject rate slightly HIGHER than Merlin's
-      // so he looks more suspicious (draws Assassin toward himself)
       const decoyRejectRate = Math.min(0.98, merlinRejectRate + 0.15);
-
       const baseReject = proposalCount === 1 ? 0.95 : proposalCount === 2 ? 0.85 : 0.40;
-      // Blend between base strategic rejection and the decoy rate
       const targetReject = (baseReject + decoyRejectRate) / 2;
       const adjusted = Math.min(0.98, targetReject + (voteSuspicion[myDeviceId] || 0) * 0.10);
       return Math.random() > adjusted;

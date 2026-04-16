@@ -82,7 +82,7 @@ export default function AssassinationScreen(props: AssassinationScreenProps) {
           <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>ASSASSINATION</span>
           <div style={styles.topBarRight}>
-            {myCharacter && <CharacterBadge character={myCharacter} />}
+            {myCharacter && <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />}
             <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>

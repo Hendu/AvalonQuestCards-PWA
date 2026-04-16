@@ -105,7 +105,7 @@ export interface RoomData {
   // whether to proceed to mission voting (true) or back to team-propose (false)
   lastProposalApproved: boolean;
 
-  // v4.3.3: randomised leader order — shuffled array of deviceIds set at game start
+  // v4.3.3: randomised leader order
   leaderOrder:          string[];
 }
 
@@ -452,7 +452,7 @@ export async function startGame(
   characters:     Record<string, CharacterName>,
   availableChars: CharacterName[],
   initialLadyId:  string | null,
-  leaderOrder:    string[]          // v4.3.3: shuffled deviceId array for random leader rotation
+  leaderOrder:    string[]
 ): Promise<void> {
   const roomRef = doc(db, 'rooms', roomCode);
   await updateDoc(roomRef, {

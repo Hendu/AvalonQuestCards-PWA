@@ -46,6 +46,8 @@ interface TeamProposeScreenProps {
   soundEnabled:     boolean;
   onToggleSound:    () => void;
   leaderDeviceId:   string;
+  characters:       Record<string, CharacterName>;
+  myDeviceId:       string;
 }
 
 export default function TeamProposeScreen(props: TeamProposeScreenProps) {
@@ -54,7 +56,7 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
     goodWins, evilWins, questOutcomes, myName, myCharacter,
     proposalCount, isHost, onSubmitProposal, onResetGame,
     ladyOfTheLakeEnabled, ladyResult, ladyHistory,
-    soundEnabled, onToggleSound, leaderDeviceId,
+    soundEnabled, onToggleSound, leaderDeviceId, characters, myDeviceId,
   } = props;
 
   // After investigation: ladyHistory has the investigator as its last entry,
@@ -99,7 +101,7 @@ export default function TeamProposeScreen(props: TeamProposeScreenProps) {
           <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>AVALON QUEST CARDS</span>
           <div style={styles.topBarRight}>
-            {myCharacter && <CharacterBadge character={myCharacter} />}
+            {myCharacter && <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />}
             <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>

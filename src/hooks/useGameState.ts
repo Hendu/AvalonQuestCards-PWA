@@ -161,7 +161,7 @@ export interface GameState {
   // v4.1.1: always shown after team vote, regardless of outcome
   lastProposalApproved: boolean;
 
-  // Derived convenience flags
+  // v4.3.3: Bot chat
   amIOnMission:           boolean;
   haveIVoted:             boolean;
   allVotesIn:             boolean;
@@ -474,7 +474,10 @@ export function useGameState() {
     return computeProposalSuspicion(missionHistoryRef.current);
   }
 
-  function getMerlinRejectRatio(botDeviceId: string): number {
+  // Build bot chat messages for the given trigger from all bot players
+
+
+    function getMerlinRejectRatio(botDeviceId: string): number {
     const r = merlinRejectRef.current[botDeviceId];
     if (!r || r.total === 0) return 0;
     return r.rejects / r.total;
@@ -668,6 +671,7 @@ export function useGameState() {
     );
     voteHistoryRef.current = [...voteHistoryRef.current, ...newRecords];
   }, [state.phase]);
+
 
 
   // BOT: lady of the lake — if the token holder is a bot, investigate

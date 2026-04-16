@@ -28,12 +28,12 @@ import CharacterBadge from '../components/CharacterBadge';
 
 interface GameBoardScreenProps {
   state:                GameState;
-  onVote:               (result: VoteResult) => void;   // works for both local and network
+  onVote:               (result: VoteResult) => void;
   onAdvanceToNextQuest: () => void;
   onResetVotes:         () => void;
   onResetGame:          () => void;
   onToggleSound:        () => void;
-  onRevealResults:      () => void;  // host only, network mode
+  onRevealResults:      () => void;
 }
 
 function getBackgroundImage(phase: GameState['phase'], winner: string | null): string {
@@ -100,8 +100,9 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
     votes, phase, lastQuestResult, winner, soundEnabled,
     gameMode, isHost, players, missionPlayerIds,
     amIOnMission, haveIVoted, allVotesIn,
-    myDeviceId, myName, myCharacter, assassinTarget,
+    myDeviceId, myName, myCharacter, assassinTarget, characters,
   } = state;
+
 
   const missionSize   = getMissionSize(totalPlayers, currentQuest);
   const failsRequired = getFailsRequired(totalPlayers, currentQuest);
@@ -376,8 +377,9 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               </button>
               <span style={styles.topBarTitle}>AVALON QUEST CARDS</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Bot chat button — only shown when bots are enabled */}
                 {gameMode === 'network' && myCharacter && (
-                  <CharacterBadge character={myCharacter} />
+                  <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />
                 )}
                 <QuitButton onConfirm={onResetGame} isHost={isHost} />
               </div>

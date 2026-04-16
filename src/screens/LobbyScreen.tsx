@@ -70,14 +70,15 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     roomCode, isHost, players, totalPlayers, myDeviceId,
     availableCharacters, onUpdateCharacters, onStartGame, onLeave,
     ladyOfTheLakeEnabled, onToggleLadyOfTheLake,
-    botsEnabled, onToggleBots, soundEnabled, onToggleSound,
+    botsEnabled, onToggleBots,
+    soundEnabled, onToggleSound,
   } = props;
 
   // Which character card is currently zoomed (null = none)
-  const [zoomedCard,    setZoomedCard]    = useState<CharacterName | null>(null);
-  const [lotlModalOpen, setLotlModalOpen] = useState(false);
-  const [botModalOpen,  setBotModalOpen]  = useState(false);
-  const [codeCopied,    setCodeCopied]    = useState(false);
+  const [zoomedCard,       setZoomedCard]       = useState<CharacterName | null>(null);
+  const [lotlModalOpen,    setLotlModalOpen]    = useState(false);
+  const [botModalOpen,     setBotModalOpen]     = useState(false);
+  const [codeCopied,       setCodeCopied]       = useState(false);
 
   const allSelected    = getFullCharacterList(availableCharacters);
   const validation     = validateCharacterSelection(availableCharacters, totalPlayers);
@@ -383,6 +384,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     );
   }
 
+
   return (
     <div style={{ ...styles.screen, backgroundImage: 'url(/assets/images/normal_background.png)' }}>
       <div style={styles.overlay} />
@@ -658,10 +660,9 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                 }}>
                   MECHANIC
                 </span>
-                {botsEnabled && (
-                  <span style={{ ...styles.lotlEnabledCheck, color: 'rgba(220,170,60,0.9)' }}>✓</span>
-                )}
+                {botsEnabled && <span style={{ ...styles.lotlEnabledCheck, color: 'rgba(220,170,60,0.9)' }}>✓</span>}
               </button>
+
 
             </div>
           </div>

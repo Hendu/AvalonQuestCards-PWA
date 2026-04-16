@@ -36,6 +36,8 @@ interface TeamVoteResultsScreenProps {
   soundEnabled:     boolean;
   onToggleSound:    () => void;
   leaderDeviceId:   string;
+  characters:       Record<string, CharacterName>;
+  myDeviceId:       string;
 }
 
 function getPlayerName(players: Player[], deviceId: string): string {
@@ -47,7 +49,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
   const {
     players, proposalVotes, missionPlayerIds, myCharacter,
     isHost, approveCount, rejectCount, approved, onContinue, onResetGame,
-    soundEnabled, onToggleSound, leaderDeviceId,
+    soundEnabled, onToggleSound, leaderDeviceId, characters, myDeviceId,
   } = props;
 
   const total = approveCount + rejectCount;
@@ -66,7 +68,7 @@ export default function TeamVoteResultsScreen(props: TeamVoteResultsScreenProps)
           <button style={styles.iconButton} onClick={onToggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
           <span style={styles.topBarTitle}>TEAM VOTE RESULTS</span>
           <div style={styles.topBarRight}>
-            {myCharacter && <CharacterBadge character={myCharacter} />}
+            {myCharacter && <CharacterBadge character={myCharacter} players={players} characters={characters} myDeviceId={myDeviceId} />}
             <QuitButton onConfirm={onResetGame} isHost={isHost} />
           </div>
         </div>
