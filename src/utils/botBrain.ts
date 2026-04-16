@@ -448,20 +448,26 @@ export function decideBotProposalVote(
     const hasEvil   = missionPlayerIds.some(function(id) { return knowledge.knownEvil.includes(id); });
     if (!hasEvil) return Math.random() < noise ? false : true;
 
+    // Quest 1, proposal 1: mirror Servant behavior regardless of evil knowledge.
+    // Evil rarely fails round 1 anyway, and acting like Merlin on round 1 outs him.
+    // 42% reject if not on team, 25% if on team (same as Servant first-round logic).
+    if (proposalCount === 1 && voteHistory.length === 0) {
+      const iAmOnTeam = missionPlayerIds.includes(myDeviceId);
+      return Math.random() > (iAmOnTeam ? 0.25 : 0.42);
+    }
+
     // Compare Merlin's reject-on-fail rate to the population average.
     // If he's a significant outlier, he's becoming identifiable — blend harder.
     const rejectRates    = computeRejectOnFailRate(voteHistory);
     const myRejectRate   = rejectRates[myDeviceId] || 0;
     const popRejectRate  = computePopulationRejectRate(voteHistory, myDeviceId);
-    const outlierDelta   = myRejectRate - popRejectRate;  // how much above average
+    const outlierDelta   = myRejectRate - popRejectRate;
 
-    // Base blend factor — increases when Merlin is standing out statistically
     let blend = 0.10;
-    if      (outlierDelta > 0.40) blend = 0.35;  // very obvious — blend hard
-    else if (outlierDelta > 0.25) blend = 0.22;  // noticeable
-    else if (outlierDelta > 0.10) blend = 0.14;  // slightly above average
+    if      (outlierDelta > 0.40) blend = 0.35;
+    else if (outlierDelta > 0.25) blend = 0.22;
+    else if (outlierDelta > 0.10) blend = 0.14;
 
-    // Also modulate by raw reject ratio (original signal)
     let pressure = 0;
     if      (merlinRejectRatio > 0.50) pressure = 0.65 * blend;
     else if (merlinRejectRatio > 0.35) pressure = 0.40 * blend;
@@ -523,20 +529,45 @@ export function decideBotProposalVote(
   }
 
   // ---------------------------------------------------------------------------
-  // LOYAL SERVANT — vote suspicion + lady knowledge
+  // LOYAL SERVANT — evidence-driven rejection
+  //
+  // Key design principle: without signals, a Servant has no basis to reject.
+  // Aggressive default rejection on proposal 1 is both irrational (no evidence)
+  // and a tell (marks the bot as a Servant to observant players).
+  //
+  // Base rates scale with available evidence:
+  //   - No signals at all (quest 1, fresh game): near coin-flip (~40% reject)
+  //   - Some signal accumulation: moderate rejection
+  //   - Strong signals (high heat, high vote suspicion): aggressive rejection
   // ---------------------------------------------------------------------------
   const avgVoteSuspicion = missionPlayerIds.reduce(function(s, id) {
     return s + (voteSuspicion[id] || 0);
   }, 0) / Math.max(missionPlayerIds.length, 1);
 
-  const servantRates = [0.95, 0.62, 0.24];
-  let baseReject = servantRates[Math.min(proposalCount - 1, 2)];
-  baseReject = Math.min(0.98, baseReject + avgVoteSuspicion * 0.25);
-  // Also factor in whether the leader has a bad proposal track record
-  baseReject = Math.min(0.98, baseReject + leaderSuspicion * 0.15);
+  // How much evidence do we actually have?
+  const totalVoteRecords = voteHistory.length;
+  const evidenceLevel = Math.min(1.0, totalVoteRecords / Math.max(missionPlayerIds.length * 3, 6));
+
+  // If I'm on the team, I have less reason to reject — I'm not being excluded
+  // and I can ensure at least one good vote on the mission
+  const iAmOnTeam = missionPlayerIds.includes(myDeviceId);
+  const onTeamDiscount = iAmOnTeam ? 0.15 : 0.0;
+
+  // Base rejection: scales from near-neutral (no evidence) to moderately cautious (full evidence)
+  const baseByProposal = proposalCount === 1 ? 0.40 : proposalCount === 2 ? 0.55 : 0.24;
+
+  // Evidence multiplier + on-team discount
+  let baseReject = Math.max(0, baseByProposal - onTeamDiscount + evidenceLevel * 0.35);
+
+  // Boost from vote suspicion and leader suspicion (signal-driven, not default)
+  baseReject = Math.min(0.92, baseReject + avgVoteSuspicion * 0.25);
+  baseReject = Math.min(0.92, baseReject + leaderSuspicion * 0.15);
+
+  // LoTL confirmed good players on team: ease off
   if (hasKnownGood && Object.keys(ladyKnowledge).length > 0) {
     baseReject = Math.max(0, baseReject - 0.15);
   }
+
   return Math.random() > baseReject;
 }
 
