@@ -188,7 +188,7 @@ export const BOT_DELAYS = {
   proposalVote:  { min: 300,  max: 1000  }, // individual approve/reject votes
   missionVote:   { min: 750,  max: 2000  },
   ladyTarget:    { min: 8000, max: 12000 }, // linger on LOTL screen
-  assassination: { min: 1250, max: 2750  },
+  assassination: { min: 5000, max: 7000  },
 };
 
 export function botThinkDelay(min = 1200, max = 3200): number {
@@ -201,15 +201,26 @@ export function botThinkDelay(min = 1200, max = 3200): number {
 // -----------------------------------------------------------------------------
 
 export function decideBotProposal(
-  myDeviceId:  string,
-  myCharacter: CharacterName,
-  characters:  Record<string, CharacterName>,
-  allPlayers:  Player[],
-  heatmap:     Record<string, number>,
-  missionSize: number
+  myDeviceId:    string,
+  myCharacter:   CharacterName,
+  characters:    Record<string, CharacterName>,
+  allPlayers:    Player[],
+  heatmap:       Record<string, number>,
+  missionSize:   number,
+  ladyKnowledge: Record<string, 'good' | 'evil'>   // confirmed alignments from LoTL investigations
 ): string[] {
   const knowledge = getBotKnowledge(myDeviceId, myCharacter, characters);
   const allIds    = allPlayers.map(function(p) { return p.deviceId; });
+
+  // Merge character knowledge with LoTL knowledge — any confirmed-evil player
+  // from either source should be excluded from a good bot's proposals.
+  // Evil bots already know their allies; LoTL gives Servant/Percival equivalent intel.
+  const confirmedEvil = [
+    ...knowledge.knownEvil,
+    ...Object.entries(ladyKnowledge)
+      .filter(function([, alignment]) { return alignment === 'evil'; })
+      .map(function([id]) { return id; }),
+  ].filter(function(id, idx, arr) { return arr.indexOf(id) === idx; }); // dedupe
 
   if (myCharacter === 'Oberon') {
     const others = shuffleArray(allIds.filter(function(id) { return id !== myDeviceId; }));
@@ -229,14 +240,19 @@ export function decideBotProposal(
     return team.slice(0, missionSize);
   }
 
+  // Good bot: always include self, include Merlin if Percival
   let team: string[] = [myDeviceId];
   if (myCharacter === 'Percival' && knowledge.merlinDeviceId && !team.includes(knowledge.merlinDeviceId)) {
     team.push(knowledge.merlinDeviceId);
   }
+
+  // Fill with players not known to be evil (from either character knowledge or LoTL)
   const candidates = allIds
-    .filter(function(id) { return !team.includes(id) && !knowledge.knownEvil.includes(id); })
+    .filter(function(id) { return !team.includes(id) && !confirmedEvil.includes(id); })
     .sort(function(a, b) { return (heatmap[a] || 0) - (heatmap[b] || 0); });
   while (team.length < missionSize && candidates.length > 0) team.push(candidates.shift()!);
+
+  // Last resort: if still not full (e.g. too many known evil players), fill from anyone
   if (team.length < missionSize) {
     const rem = allIds.filter(function(id) { return !team.includes(id); });
     while (team.length < missionSize && rem.length > 0) team.push(rem.shift()!);
@@ -684,28 +700,10 @@ export function decideBotAssassination(
     scores[id] = Math.max(0, score);
   }
 
-  // Sort by score descending
-  const ranked = [...goodPlayers].sort(function(a, b) {
+  // Sort by score descending and pick the top scorer.
+  // By assassination phase at least 3 quests have completed, so vote history
+  // is always sufficient — no fallback needed.
+  return [...goodPlayers].sort(function(a, b) {
     return (scores[b.deviceId] || 0) - (scores[a.deviceId] || 0);
-  });
-
-  // If we have meaningful vote history, lean heavily on the top scorer.
-  // Without history (early game), fall back to the old heatmap approach.
-  const hasHistory = voteHistory.length >= goodPlayers.length * 2;
-
-  if (hasHistory) {
-    // 65% pick the top-scored player, 25% pick 2nd, 10% random
-    const roll = Math.random();
-    if (roll < 0.65) return ranked[0].deviceId;
-    if (roll < 0.90 && ranked.length > 1) return ranked[1].deviceId;
-    return goodPlayers[Math.floor(Math.random() * goodPlayers.length)].deviceId;
-  } else {
-    // Fallback: original heatmap approach (low heat = stayed clean = likely Merlin)
-    const byHeat = [...goodPlayers].sort(function(a, b) {
-      return (heatmap[a.deviceId] || 0) - (heatmap[b.deviceId] || 0);
-    });
-    return Math.random() < 0.45
-      ? byHeat[0].deviceId
-      : goodPlayers[Math.floor(Math.random() * goodPlayers.length)].deviceId;
-  }
+  })[0].deviceId;
 }
