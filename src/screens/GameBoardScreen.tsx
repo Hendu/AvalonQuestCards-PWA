@@ -101,6 +101,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
     gameMode, isHost, players, missionPlayerIds,
     amIOnMission, haveIVoted, allVotesIn,
     myDeviceId, myName, myCharacter, assassinTarget, characters,
+    leaderIndex, leaderOrder,
   } = state;
 
 
@@ -517,6 +518,32 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     failCount={lastQuestResult.failCount}
                     successCount={lastQuestResult.successCount}
                   />
+
+                  {/* Team members — styled like the proposed team table */}
+                  {missionPlayerIds.length > 0 && (function() {
+                    const orderLen      = leaderOrder.length > 0 ? leaderOrder.length : players.length;
+                    const proposerIdx   = (leaderIndex - 1 + orderLen) % Math.max(orderLen, 1);
+                    const missionLeader = leaderOrder.length > 0
+                      ? leaderOrder[proposerIdx]
+                      : [...players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[proposerIdx]?.deviceId;
+                    return (
+                      <div style={styles.missionTeamBox}>
+                        <p style={styles.missionTeamLabel}>MISSION TEAM</p>
+                        {missionPlayerIds.map(function(id) {
+                          const isLeader = id === missionLeader;
+                          const name     = getPlayerName(players, id);
+                          return (
+                            <div key={id} style={styles.missionTeamRow}>
+                              <span style={styles.missionTeamName}>
+                                {isLeader ? `${name} 👑` : name}
+                              </span>
+                              <span style={styles.missionTeamBadge}>⚔️</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -950,11 +977,45 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: 'rgba(42,45,69,0.8)',
     cursor:      'default',
   },
+  missionTeamBox: {
+    marginTop:       SPACING.sm,
+    padding:         SPACING.md,
+    backgroundColor: 'rgba(22,24,38,0.85)',
+    borderRadius:    12,
+    border:          `1px solid ${COLORS.border}`,
+    display:         'flex',
+    flexDirection:   'column',
+    gap:             6,
+    alignSelf:       'stretch',
+  },
+  missionTeamLabel: {
+    fontSize:      11,
+    color:         COLORS.gold,
+    letterSpacing: '3px',
+    fontWeight:    '700',
+    margin:        '0 0 4px 0',
+  },
+  missionTeamRow: {
+    display:         'flex',
+    justifyContent:  'space-between',
+    alignItems:      'center',
+    padding:         '6px 8px',
+    backgroundColor: 'rgba(13,15,26,0.4)',
+    borderRadius:    8,
+  },
+  missionTeamName: {
+    fontSize:   15,
+    fontWeight: '600',
+    color:      COLORS.textPrimary,
+  },
+  missionTeamBadge: {
+    fontSize: 14,
+  },
   resultsSection: {
     display:        'flex',
     flexDirection:  'column',
     alignItems:     'center',
-    gap:            SPACING.lg,
+    gap:            SPACING.md,
   },
   resultBanner: {
     width:          '100%',
