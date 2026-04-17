@@ -315,7 +315,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
               color:           'rgba(200,160,60,0.9)',
               backgroundColor: 'rgba(50,35,8,0.7)',
               borderColor:     'rgba(160,120,40,0.4)',
-            }}>⟡ MECHANIC</span>
+            }}>⟡ OPTION</span>
           </div>
 
           {/* Description */}
@@ -601,7 +601,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           <div style={styles.divider} />
 
           <div style={styles.section}>
-            <p style={styles.sectionLabel}>MECHANICS</p>
+            <p style={styles.sectionLabel}>GAME OPTIONS</p>
             <p style={styles.tapHint}>Tap to learn more</p>
 
             {/* Cards row — LoTL and Bots side by side */}
@@ -658,7 +658,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                   backgroundColor: botsEnabled ? 'rgba(50,35,8,0.7)'    : 'rgba(30,33,54,0.5)',
                   borderColor:     botsEnabled ? 'rgba(160,120,40,0.4)' : 'rgba(42,45,69,0.5)',
                 }}>
-                  MECHANIC
+                  OPTION
                 </span>
                 {botsEnabled && <span style={{ ...styles.lotlEnabledCheck, color: 'rgba(220,170,60,0.9)' }}>✓</span>}
               </button>

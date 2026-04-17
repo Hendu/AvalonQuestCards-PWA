@@ -253,6 +253,10 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 .filter(function([, c]) { return c === 'Loyal Servant of Arthur'; })
                 .sort(function([a], [b]) { return a.localeCompare(b); }); // stable order
 
+              const minionEntries = Object.entries(state.characters)
+                .filter(function([, c]) { return c === 'Minion of Mordred'; })
+                .sort(function([a], [b]) { return a.localeCompare(b); }); // stable order
+
               // Prefer a human servant for "Bob" — being Bob is more fun if you're real
               const humanServants = servantEntries.filter(function([id]) {
                 return !players.find(function(p) { return p.deviceId === id; })?.isBot;
@@ -289,6 +293,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                   <p style={styles.creditsTitle}>Cast</p>
                   {goodCast
                     .filter(function([, c]) { return c !== 'Merlin' && c !== 'Loyal Servant of Arthur'; })
+                    .sort(function([a], [b]) { return a.localeCompare(b); })
                     .map(function([deviceId, character]) {
                       return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
                     })
@@ -302,8 +307,21 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                       />
                     );
                   })}
-                  {evilCast.map(function([deviceId, character]) {
-                    return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
+                  {evilCast
+                    .filter(function([, c]) { return c !== 'Minion of Mordred'; })
+                    .sort(function([a], [b]) { return a.localeCompare(b); })
+                    .map(function([deviceId, character]) {
+                      return <CreditRow key={deviceId} left={character} right={getPlayerName(players, deviceId)} />;
+                    })
+                  }
+                  {minionEntries.map(function([deviceId], index) {
+                    return (
+                      <CreditRow
+                        key={deviceId}
+                        left={index === 0 ? (minionEntries.length === 1 ? 'Minion of Mordred' : 'Minions of Mordred') : ''}
+                        right={getPlayerName(players, deviceId)}
+                      />
+                    );
                   })}
                   {introServant && (
                     <CreditRow
@@ -519,28 +537,21 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                     successCount={lastQuestResult.successCount}
                   />
 
-                  {/* Team members — styled like the proposed team table */}
+                  {/* Team members — same style as "On This Mission" roster */}
                   {missionPlayerIds.length > 0 && (function() {
                     const orderLen      = leaderOrder.length > 0 ? leaderOrder.length : players.length;
                     const proposerIdx   = (leaderIndex - 1 + orderLen) % Math.max(orderLen, 1);
                     const missionLeader = leaderOrder.length > 0
                       ? leaderOrder[proposerIdx]
                       : [...players].sort(function(a, b) { return a.joinedAt - b.joinedAt; })[proposerIdx]?.deviceId;
+                    const names = missionPlayerIds.map(function(id) {
+                      const name = getPlayerName(players, id);
+                      return id === missionLeader ? `${name} 👑` : name;
+                    });
                     return (
-                      <div style={styles.missionTeamBox}>
-                        <p style={styles.missionTeamLabel}>MISSION TEAM</p>
-                        {missionPlayerIds.map(function(id) {
-                          const isLeader = id === missionLeader;
-                          const name     = getPlayerName(players, id);
-                          return (
-                            <div key={id} style={styles.missionTeamRow}>
-                              <span style={styles.missionTeamName}>
-                                {isLeader ? `${name} 👑` : name}
-                              </span>
-                              <span style={styles.missionTeamBadge}>⚔️</span>
-                            </div>
-                          );
-                        })}
+                      <div style={styles.missionRoster}>
+                        <p style={styles.missionLabel}>MISSION TEAM</p>
+                        <p style={styles.missionNames}>{names.join('  ·  ')}</p>
                       </div>
                     );
                   })()}
@@ -976,40 +987,6 @@ const styles: Record<string, React.CSSProperties> = {
   resetButtonDisabled: {
     borderColor: 'rgba(42,45,69,0.8)',
     cursor:      'default',
-  },
-  missionTeamBox: {
-    marginTop:       SPACING.sm,
-    padding:         SPACING.md,
-    backgroundColor: 'rgba(22,24,38,0.85)',
-    borderRadius:    12,
-    border:          `1px solid ${COLORS.border}`,
-    display:         'flex',
-    flexDirection:   'column',
-    gap:             6,
-    alignSelf:       'stretch',
-  },
-  missionTeamLabel: {
-    fontSize:      11,
-    color:         COLORS.gold,
-    letterSpacing: '3px',
-    fontWeight:    '700',
-    margin:        '0 0 4px 0',
-  },
-  missionTeamRow: {
-    display:         'flex',
-    justifyContent:  'space-between',
-    alignItems:      'center',
-    padding:         '6px 8px',
-    backgroundColor: 'rgba(13,15,26,0.4)',
-    borderRadius:    8,
-  },
-  missionTeamName: {
-    fontSize:   15,
-    fontWeight: '600',
-    color:      COLORS.textPrimary,
-  },
-  missionTeamBadge: {
-    fontSize: 14,
   },
   resultsSection: {
     display:        'flex',
