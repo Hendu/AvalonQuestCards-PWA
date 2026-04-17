@@ -427,7 +427,7 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
                 </div>
               </div>
 
-              <div style={styles.divider} />
+              {!isResultPhase && <div style={styles.divider} />}
 
               {/* ------------------------------------------------------------ */}
               {/* VOTING PHASE                                                  */}
@@ -1016,10 +1016,11 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection:  'column',
     alignItems:     'center',
     gap:            SPACING.md,
+    marginTop:      -SPACING.sm,
   },
   resultBanner: {
     width:          '100%',
-    padding:        `${SPACING.lg}px ${SPACING.md}px`,
+    padding:        `${SPACING.md}px ${SPACING.md}px`,
     borderRadius:   20,
     border:         '1px solid',
     display:        'flex',
