@@ -107,6 +107,9 @@ export interface RoomData {
 
   // v4.3.3: randomised leader order
   leaderOrder:          string[];
+
+  // v4.4: graceful gameover cleanup
+  leftGame:             string[];  // deviceIds of players who hit Leave on credits screen
 }
 
 
@@ -160,6 +163,7 @@ export async function createRoom(
     botsEnabled:          false,
     lastProposalApproved: false,
     leaderOrder:          [],
+    leftGame:             [],
   };
 
   await setDoc(roomRef, initialData);
@@ -854,6 +858,27 @@ export async function markPlayerQuit(
 
 
 // -----------------------------------------------------------------------------
+// markPlayerLeftGame
+// -----------------------------------------------------------------------------
+// Called when a player hits Leave on the gameover/credits screen.
+// Adds their deviceId to the leftGame array. If all players have left,
+// the caller should delete the room.
+export async function markPlayerLeftGame(
+  roomCode:      string,
+  deviceId:      string,
+): Promise<number> {
+  const roomRef  = doc(db, 'rooms', roomCode);
+  await updateDoc(roomRef, {
+    leftGame: arrayUnion(deviceId),
+  });
+  // Re-read to get the current count
+  const snap = await getDoc(roomRef);
+  if (!snap.exists()) return -1;
+  const data = snap.data() as RoomData;
+  return (data.leftGame ?? []).length;
+}
+
+
 // subscribeToRoom
 // -----------------------------------------------------------------------------
 export function subscribeToRoom(

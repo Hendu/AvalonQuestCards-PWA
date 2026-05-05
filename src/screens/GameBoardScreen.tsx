@@ -6,7 +6,7 @@
 // NETWORK VOTING FLOW:
 //   - Mission players: see vote cards on their own device, tap privately
 //   - Non-mission players: see "You are not on this mission" + vote progress
-//   - After voting: mission players see "Waiting for others" 
+//   - After voting: mission players see "Waiting for others"
 //   - Host: when all votes are in, sees "Reveal Results" button
 //   - After reveal: all devices see results simultaneously
 //
@@ -206,9 +206,9 @@ export default function GameBoardScreen(props: GameBoardScreenProps) {
               {winner === 'good'
                 ? gameMode === 'local'
                   ? "Good has completed 3 quests!\nBut Merlin must still survive the Assassin's blade.\nDoes the Assassin know who Merlin is?"
-                  : "Merlin survived the Assassin's blade.\nThe forces of Good prevail!"
+                  : `The Assassin targeted ${assassinTarget ? getPlayerName(players, assassinTarget) : 'Merlin'}, but was wrong.\nThe forces of Good prevail!`
                 : assassinTarget !== null
-                  ? "The Assassin found Merlin.\nEvil wins by assassination."
+                  ? `The Assassin correctly identified ${getPlayerName(players, assassinTarget)} as Merlin.\nEvil wins by assassination.`
                   : lastQuestResult === null
                     ? "Five proposals were rejected.\nEvil wins automatically."
                     : "The forces of Evil have sabotaged 3 quests.\nDarkness reigns."}

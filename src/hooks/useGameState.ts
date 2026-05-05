@@ -71,6 +71,7 @@ import {
   subscribeToRoom,
   sendHeartbeat,
   markPlayerQuit,
+  markPlayerLeftGame,
   removePlayerFromLobby,
   setPendingDisconnect,
   hostGiveUpOnReconnect,
@@ -1108,9 +1109,15 @@ export function useGameState() {
   function resetGame(): void {
     releaseWakeLock();
     if (state.gameMode === 'network' && state.roomCode) {
-      if (state.isHost) {
+      if (state.isHost && state.phase !== 'gameover') {
         deleteRoom(state.roomCode);
-      } else if (state.phase === 'lobby') {
+      } else if (state.isHost && state.phase === 'gameover') {
+        // At gameover, host resets locally without deleting the room.
+        // The room is cleaned up by markPlayerLeftGame once everyone has left,
+        // or after 60s as a safety net for players who just close the app.
+        const codeToDelete = state.roomCode;
+        setTimeout(function() { deleteRoom(codeToDelete!); }, 60000);
+      } else if (!state.isHost && state.phase === 'lobby') {
         const myPlayer = state.players.find(function(p) { return p.deviceId === myDeviceId; });
         if (myPlayer) removePlayerFromLobby(state.roomCode, myPlayer);
       }
@@ -1130,15 +1137,28 @@ export function useGameState() {
 
   async function quitGame(): Promise<void> {
     releaseWakeLock();
-    if (state.gameMode === 'network' && state.roomCode) {
-      await markPlayerQuit(state.roomCode, state.myName, state.isHost);
-    }
+    // Unsubscribe FIRST so that the Firestore write below doesn't trigger
+    // onSnapshot and revert the local state reset.
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
     localVotesRef.current = [];
     setState(getInitialState(myDeviceId));
+    if (state.gameMode === 'network' && state.roomCode) {
+      if (state.phase === 'gameover') {
+        // Mark this player as having left the credits screen.
+        // If everyone has now left, delete the room immediately.
+        // (The host's 60s setTimeout is a fallback for players who just close the app.)
+        const leftCount = await markPlayerLeftGame(state.roomCode, state.myDeviceId);
+        const totalCount = state.players.filter(function(p) { return !p.isBot; }).length;
+        if (leftCount >= totalCount) {
+          await deleteRoom(state.roomCode);
+        }
+      } else {
+        await markPlayerQuit(state.roomCode, state.myName, state.isHost);
+      }
+    }
   }
 
 
@@ -1297,6 +1317,11 @@ export function useGameState() {
       unsubscribeRef.current = null;
     }
     setState(function(prev) {
+      // At gameover, guests have their own 'Leave Game' button — don't force
+      // them back to the main screen just because the host left or deleted the room.
+      if (prev.phase === 'gameover' && !prev.isHost) {
+        return prev;
+      }
       const fresh = getInitialState(myDeviceId);
       if (prev.phase !== 'setup' && !prev.isHost) {
         fresh.disconnectMessage = 'The host disconnected or ended the game.';
