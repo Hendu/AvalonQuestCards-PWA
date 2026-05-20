@@ -32,6 +32,7 @@ import {
   GameMode,
   CharacterName,
   getMissionSize,
+  getFailsRequired,
   shuffleArray,
   evaluateVotes,
   evaluateProposalVotes,
@@ -538,7 +539,8 @@ export function useGameState() {
     const leader         = state.players.find(function(p) { return p.deviceId === leaderDeviceId; });
     if (!leader || !isBotDeviceId(leader.deviceId)) return;
 
-    const missionSize = getMissionSize(state.totalPlayers, state.currentQuest);
+    const missionSize   = getMissionSize(state.totalPlayers, state.currentQuest);
+    const failsRequired = getFailsRequired(state.totalPlayers, state.currentQuest);
     const leaderChar  = state.characters[leader.deviceId];
     if (!leaderChar) return;
 
@@ -549,7 +551,7 @@ export function useGameState() {
       const ladyKnow   = ladyKnowledgeRef.current[leader.deviceId] || {};
       const proposal   = decideBotProposal(
         leader.deviceId, leaderChar, s.characters,
-        s.players, heatmap, missionSize, ladyKnow
+        s.players, heatmap, missionSize, ladyKnow, failsRequired
       );
       submitTeamProposal(s.roomCode, proposal);
     }, botThinkDelay(BOT_DELAYS.leaderPropose.min, BOT_DELAYS.leaderPropose.max));

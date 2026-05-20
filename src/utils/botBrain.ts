@@ -207,7 +207,8 @@ export function decideBotProposal(
   allPlayers:    Player[],
   heatmap:       Record<string, number>,
   missionSize:   number,
-  ladyKnowledge: Record<string, 'good' | 'evil'>   // confirmed alignments from LoTL investigations
+  ladyKnowledge: Record<string, 'good' | 'evil'>,  // confirmed alignments from LoTL investigations
+  failsRequired: number                              // how many fail votes needed to fail this mission
 ): string[] {
   const knowledge = getBotKnowledge(myDeviceId, myCharacter, characters);
   const allIds    = allPlayers.map(function(p) { return p.deviceId; });
@@ -230,7 +231,9 @@ export function decideBotProposal(
   if (CHARACTERS[myCharacter].alignment === 'evil') {
     let team: string[] = [myDeviceId];
     const allies = knowledge.knownEvil.filter(function(id) { return id !== myDeviceId; });
-    if (allies.length > 0 && missionSize >= 2 && Math.random() > 0.3) {
+    // Only add a second evil player when the mission requires 2 fails to fail.
+    // Sending 2 evil on a 1-fail mission wastes an evil seat for no benefit.
+    if (allies.length > 0 && missionSize >= 2 && failsRequired >= 2 && Math.random() > 0.3) {
       team.push(allies[Math.floor(Math.random() * allies.length)]);
     }
     const fill = allIds
